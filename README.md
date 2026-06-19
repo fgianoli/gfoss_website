@@ -45,7 +45,7 @@ Dopo l'installer WP:
    ```
 4. Carica le pagine del menù Associazione:
    ```bash
-   docker compose --profile tools run --rm wpcli /scripts/seed-pages.sh
+   docker compose --profile tools run --rm wpcli eval-file /scripts/seed-pages.php
    ```
 
 Ferma tutto con `docker compose down` (i dati restano nei volumi). Per pulizia totale: `docker compose down -v`.
@@ -85,7 +85,7 @@ Ferma tutto con `docker compose down` (i dati restano nei volumi). Per pulizia t
 
 6. **Seed pagine Associazione**
    ```bash
-   docker compose --profile tools run --rm wpcli /scripts/seed-pages.sh
+   docker compose --profile tools run --rm wpcli eval-file /scripts/seed-pages.php
    ```
    (Lo script verrà aggiunto in fase 5: importa i contenuti del menù Associazione.)
 

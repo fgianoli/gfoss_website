@@ -64,6 +64,13 @@ docker compose up -d
 docker compose ps   # verifica che gfoss-wp e gfoss-db siano "Up"
 ```
 
+**Permessi della cartella uploads** (il container gira come `www-data`, uid 33). Senza questo, i caricamenti media e l'import di logo/favicon nel seed falliscono:
+
+```bash
+mkdir -p wp-content/uploads
+sudo chown -R 33:33 wp-content/uploads
+```
+
 ### Opzione B — Portainer
 
 1. Apri Portainer → **Stacks → Add stack**
@@ -133,7 +140,7 @@ Senza questo step la tessera mostrerà un errore esplicito ma il resto del sito 
 ## 8. Seed delle pagine "Associazione"
 
 ```bash
-docker compose --profile tools run --rm wpcli /scripts/seed-pages.sh
+docker compose --profile tools run --rm wpcli eval-file /scripts/seed-pages.php
 ```
 
 Lo script è **idempotente** e fa da solo gran parte della configurazione iniziale:
