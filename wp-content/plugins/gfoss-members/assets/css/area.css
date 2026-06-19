@@ -1,0 +1,85 @@
+/* GFOSS members — area personale */
+
+.gf-area { max-width: 1100px; margin: 0 auto; }
+
+.gf-area__head {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 1rem; margin-bottom: 1.5rem;
+    padding-bottom: 1rem; border-bottom: 1px solid #E2E8EC;
+}
+.gf-area__eyebrow { color: #1A6FA0; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; font-size: .8rem; margin: 0; }
+.gf-area__title   { font-family: Manrope, sans-serif; font-size: clamp(1.6rem, 4vw, 2.2rem); margin: .25rem 0 .25rem; }
+.gf-area__sub     { color: #4A5C6A; margin: 0; font-size: .9rem; }
+
+.gf-area__grid {
+    display: grid; gap: 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+.gf-area__card {
+    background: #fff; border: 1px solid #E2E8EC; border-radius: 12px;
+    padding: 1.25rem 1.5rem; box-shadow: 0 1px 2px rgba(15,35,48,.04);
+    min-width: 0; /* consente al contenuto (tabelle) di rientrare nella griglia */
+}
+.gf-area__card--wide { grid-column: 1 / -1; }
+.gf-area__card-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-bottom: .75rem; }
+.gf-area__card h2 { font-family: Manrope, sans-serif; font-size: 1.1rem; margin: 0; color: #0F2330; }
+.gf-area__card h3 { font-family: Manrope, sans-serif; font-size: .95rem; margin: 1rem 0 .5rem; color: #0F2330; }
+
+/* Tessera anteprima inline */
+.gf-tessera-mini { padding: .5rem 0 1rem; }
+.gf-tessera {
+    width: 100%; max-width: 360px;
+    aspect-ratio: 1.586 / 1;
+    background: linear-gradient(135deg, #1A6FA0, #103D58); /* default, sovrascritto inline per anno */
+    color: #fff; border-radius: 12px;
+    padding: 14px 16px; position: relative; overflow: hidden;
+    box-shadow: 0 6px 18px rgba(15,35,48,.18);
+    display: flex; flex-direction: column;
+}
+.gf-tessera__brand { align-self: flex-start; background: #fff; border-radius: 6px; padding: 5px 8px; line-height: 0; }
+.gf-tessera__brand svg { width: 26px; height: 26px; }
+.gf-tessera__logo { height: 24px; width: auto; display: block; }
+.gf-tessera__body  { margin-top: auto; padding-right: 76px; min-width: 0; }
+.gf-tessera__name  { font-weight: 700; font-size: 1.05rem; margin: 0 0 3px; line-height: 1.15; }
+.gf-tessera__num   { font-size: .82rem; opacity: .95; margin: 0; }
+.gf-tessera__num strong { color: #F39200; }
+.gf-tessera__qr {
+    position: absolute; top: 14px; right: 16px;
+    box-sizing: border-box;
+    background: #fff; padding: 4px; border-radius: 6px;
+    width: 64px; height: 64px;
+}
+
+/* Tabella storico */
+.gf-tablewrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.gf-table { width: 100%; border-collapse: collapse; margin-top: .5rem; font-size: .85rem; }
+.gf-table th, .gf-table td { padding: .45rem .5rem; border-bottom: 1px solid #E2E8EC; text-align: left; white-space: nowrap; }
+.gf-table th:first-child, .gf-table td:first-child { padding-left: 0; }
+.gf-table th:last-child, .gf-table td:last-child { padding-right: 0; }
+.gf-table th { color: #4A5C6A; font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .03em; }
+
+/* Stato chips già definiti nel tema; ripropongo qui per i casi in cui il tema non sia attivo */
+.chip { display: inline-flex; align-items: center; gap: .35rem; padding: .25rem .65rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+.chip--ok    { background: #E5F2DF; color: #5DA34D; }
+.chip--warn  { background: #FFEFD6; color: #B26A00; }
+.chip--bad   { background: #FCE3DF; color: #C0392B; }
+
+.gf-card--warn { background: #FFEFD6; border: 1px solid #B26A00; color: #5A3700; padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1rem; }
+.gf-btn--ghost { border-color: #1A6FA0; color: #1A6FA0; background: transparent; }
+.gf-btn--ghost:hover { background: #E6F3FA; }
+.gf-btn--orange { background: #F39200; color: #fff; }
+.gf-btn--orange:hover { background: #d57f00; color: #fff; }
+.gf-card--ok { background: #E5F2DF; border: 1px solid #5DA34D; color: #14391C; padding: 1rem 1.25rem; border-radius: 12px; margin-bottom: 1rem; }
+
+/* Eventi / convocazioni (card frontend) */
+.gf-eventi, .gf-convocazioni { display: grid; gap: 1rem; }
+.gf-evento { background: #fff; border: 1px solid #E2E8EC; border-radius: 12px; padding: 1.1rem 1.3rem; box-shadow: 0 1px 2px rgba(15,35,48,.04); }
+.gf-evento h3 { margin: 0 0 .35rem; font-family: Manrope, sans-serif; font-size: 1.1rem; }
+.gf-evento__meta { color: #4A5C6A; font-size: .9rem; margin: .2rem 0 .6rem; }
+.gf-evento__desc { margin: .5rem 0; }
+.gf-evento form { margin: .5rem 0 0; display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.gf-delega-form select { max-width: 100%; }
+.gf-materiali__cat { margin-bottom: 1.2rem; }
+
+details summary { cursor: pointer; padding: .25rem 0; font-weight: 500; }
+details[open] summary { margin-bottom: .5rem; }

@@ -1,0 +1,30 @@
+{
+  "name": "rndt-manager",
+  "version": "1.0.0",
+  "description": "WordPress plugin per gestione metadati RNDT 2020",
+  "author": "RNDT Manager",
+  "license": "GPL-2.0-or-later",
+  "main": "assets/build/index.js",
+  "scripts": {
+    "build": "wp-scripts build",
+    "start": "wp-scripts start",
+    "lint:js": "wp-scripts lint-js",
+    "lint:css": "wp-scripts lint-style",
+    "format": "wp-scripts format",
+    "packages-update": "wp-scripts packages-update"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^26.0.0"
+  },
+  "dependencies": {
+    "@wordpress/api-fetch": "^6.0.0",
+    "@wordpress/components": "^25.0.0",
+    "@wordpress/data": "^9.0.0",
+    "@wordpress/element": "^5.0.0",
+    "@wordpress/hooks": "^3.0.0",
+    "@wordpress/i18n": "^4.0.0",
+    "@wordpress/notices": "^4.0.0",
+    "leaflet": "^1.9.0",
+    "react-leaflet": "^4.2.0"
+  }
+}

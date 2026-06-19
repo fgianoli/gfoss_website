@@ -1,0 +1,49 @@
+# docker-compose.override.yml — SOLO per sviluppo locale
+#
+# Copia questo file:
+#     cp docker-compose.override.yml.example docker-compose.override.yml
+#
+# Docker Compose lo carica automaticamente sopra al docker-compose.yml.
+# In produzione (VPS) NON deve esistere — è gitignorato apposta.
+#
+# Cosa fa:
+#  - pubblica WordPress su http://localhost:8080 (niente NPM, niente HTTPS)
+#  - pubblica Mailpit su http://localhost:8025 (UI per leggere le email)
+#  - sostituisce le costanti WP_HOME / FORCE_SSL_ADMIN per HTTP locale
+#  - monta una mu-plugin che instrada wp_mail() su Mailpit (porta 1025)
+#  - attiva sandbox PayPal (gli IPN useranno ipnpb.sandbox.paypal.com)
+
+services:
+  wordpress:
+    ports:
+      - "8080:80"
+    networks:
+      - gfoss-internal             # rimuove npm-net (non serve in locale)
+    volumes:
+      - ./docker/dev-mail.php:/var/www/html/wp-content/mu-plugins/dev-mail.php:ro
+    environment:
+      WP_HOME: http://localhost:8080
+      WP_SITEURL: http://localhost:8080
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', 'http://localhost:8080');
+        define('WP_SITEURL', 'http://localhost:8080');
+        define('FORCE_SSL_ADMIN', false);
+        define('DISALLOW_FILE_EDIT', false);
+        define('WP_DEBUG', true);
+        define('WP_DEBUG_LOG', true);
+        define('WP_DEBUG_DISPLAY', false);
+        define('SCRIPT_DEBUG', true);
+        define('WP_MEMORY_LIMIT', '256M');
+        define('GFOSS_PAYPAL_BUTTON_ID', 'AQKXPZ2EHSP34');
+        define('GFOSS_PAYPAL_RECEIVER', 'sb-receiver@business.example.com');
+        define('GFOSS_PAYPAL_SANDBOX', true);
+        define('GFOSS_QUOTA_AMOUNT', 30);
+        define('GFOSS_ASSOC_FULL_NAME', "Associazione Italiana per l'Informazione Geografica Libera");
+        define('GFOSS_ASSOC_IBAN', 'IT85F0306909606100000015079');
+        define('GFOSS_ASSOC_BIC', 'BCITITMM');
+
+  mailpit:
+    ports:
+      - "8025:8025"                # http://localhost:8025 → casella di posta
+      - "1025:1025"                # SMTP (i container la chiamano via "mailpit:1025")
+    profiles: []                   # rimuove il profile "dev" → parte sempre con `up -d`

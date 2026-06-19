@@ -1,0 +1,70 @@
+{
+  "$schema": "https://schemas.wp.org/trunk/theme.json",
+  "version": 2,
+  "settings": {
+    "appearanceTools": true,
+    "useRootPaddingAwareAlignments": true,
+    "layout": {
+      "contentSize": "760px",
+      "wideSize": "1200px"
+    },
+    "color": {
+      "palette": [
+        { "slug": "blue-700",   "name": "Blu GFOSS",        "color": "#1A6FA0" },
+        { "slug": "blue-500",   "name": "Blu chiaro",       "color": "#2BA5D9" },
+        { "slug": "blue-100",   "name": "Blu sfumato",      "color": "#E6F3FA" },
+        { "slug": "orange-500", "name": "Arancio sole",     "color": "#F39200" },
+        { "slug": "green-600",  "name": "Verde OK",         "color": "#5DA34D" },
+        { "slug": "red-600",    "name": "Rosso allerta",    "color": "#C0392B" },
+        { "slug": "ink-900",    "name": "Inchiostro",       "color": "#0F2330" },
+        { "slug": "ink-600",    "name": "Grigio testo",     "color": "#4A5C6A" },
+        { "slug": "paper",      "name": "Carta",            "color": "#FAFBFC" },
+        { "slug": "line",       "name": "Bordo",            "color": "#E2E8EC" }
+      ],
+      "duotone": [],
+      "custom": true,
+      "customDuotone": false,
+      "defaultPalette": false
+    },
+    "typography": {
+      "fluid": true,
+      "fontFamilies": [
+        { "slug": "manrope", "name": "Manrope",      "fontFamily": "Manrope, ui-sans-serif, system-ui, sans-serif" },
+        { "slug": "inter",   "name": "Inter",        "fontFamily": "Inter, ui-sans-serif, system-ui, sans-serif" },
+        { "slug": "mono",    "name": "JetBrains Mono","fontFamily": "JetBrains Mono, ui-monospace, monospace" }
+      ],
+      "fontSizes": [
+        { "slug": "small",  "name": "Piccolo",  "size": "0.875rem", "fluid": false },
+        { "slug": "medium", "name": "Medio",    "size": "1rem",     "fluid": false },
+        { "slug": "large",  "name": "Grande",   "size": "1.25rem",  "fluid": { "min": "1.125rem", "max": "1.25rem" } },
+        { "slug": "xl",     "name": "XL",       "size": "1.5rem",   "fluid": { "min": "1.25rem", "max": "1.625rem" } },
+        { "slug": "xxl",    "name": "XXL",      "size": "2.5rem",   "fluid": { "min": "2rem",    "max": "3rem" } }
+      ]
+    },
+    "spacing": {
+      "units": ["px", "em", "rem", "%", "vw"],
+      "spacingScale": { "operator": "*", "increment": 1.5, "steps": 7, "mediumStep": 1.5, "unit": "rem" }
+    }
+  },
+  "styles": {
+    "color": {
+      "background": "var(--wp--preset--color--paper)",
+      "text": "var(--wp--preset--color--ink-900)"
+    },
+    "typography": {
+      "fontFamily": "var(--wp--preset--font-family--inter)",
+      "fontSize": "var(--wp--preset--font-size--medium)",
+      "lineHeight": "1.6"
+    },
+    "elements": {
+      "h1": { "typography": { "fontFamily": "var(--wp--preset--font-family--manrope)", "fontSize": "var(--wp--preset--font-size--xxl)", "fontWeight": "700", "lineHeight": "1.15" } },
+      "h2": { "typography": { "fontFamily": "var(--wp--preset--font-family--manrope)", "fontSize": "var(--wp--preset--font-size--xl)",  "fontWeight": "700", "lineHeight": "1.2" } },
+      "h3": { "typography": { "fontFamily": "var(--wp--preset--font-family--manrope)", "fontSize": "var(--wp--preset--font-size--large)","fontWeight": "600", "lineHeight": "1.3" } },
+      "link": { "color": { "text": "var(--wp--preset--color--blue-700)" } }
+    }
+  },
+  "templateParts": [
+    { "name": "header", "title": "Header", "area": "header" },
+    { "name": "footer", "title": "Footer", "area": "footer" }
+  ]
+}

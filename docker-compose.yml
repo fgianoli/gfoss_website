@@ -1,0 +1,111 @@
+services:
+  db:
+    image: mariadb:11
+    container_name: gfoss-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MARIADB_AUTO_UPGRADE: "1"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks: [gfoss-internal]
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  wordpress:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gfoss/wordpress:latest
+    container_name: gfoss-wp
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_TABLE_PREFIX: gfoss_
+      WORDPRESS_DEBUG: ${WP_DEBUG:-0}
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', '${WP_HOME}');
+        define('WP_SITEURL', '${WP_SITEURL}');
+        define('FORCE_SSL_ADMIN', ${FORCE_SSL_ADMIN:-true});
+        define('DISALLOW_FILE_EDIT', true);
+        define('AUTOMATIC_UPDATER_DISABLED', true);
+        define('WP_AUTO_UPDATE_CORE', 'minor');
+        define('WP_MEMORY_LIMIT', '256M');
+        define('GFOSS_PAYPAL_BUTTON_ID', '${PAYPAL_HOSTED_BUTTON_ID}');
+        define('GFOSS_PAYPAL_RECEIVER', '${PAYPAL_RECEIVER_EMAIL}');
+        define('GFOSS_QUOTA_AMOUNT', ${GFOSS_QUOTA_AMOUNT:-30});
+        define('GFOSS_ASSOC_FULL_NAME', "Associazione Italiana per l'Informazione Geografica Libera");
+        define('GFOSS_ASSOC_IBAN', '${GFOSS_IBAN}');
+        define('GFOSS_ASSOC_BIC', 'BCITITMM');
+        if (isset($$_SERVER['HTTP_X_FORWARDED_PROTO']) && $$_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') { $$_SERVER['HTTPS'] = 'on'; }
+    volumes:
+      - wp_core:/var/www/html
+      - ./wp-content/themes/gfoss-2026:/var/www/html/wp-content/themes/gfoss-2026
+      - ./wp-content/plugins/gfoss-members:/var/www/html/wp-content/plugins/gfoss-members
+      - ./wp-content/plugins/gfoss-accounting:/var/www/html/wp-content/plugins/gfoss-accounting
+      - ./wp-content/plugins/rndt-manager:/var/www/html/wp-content/plugins/rndt-manager
+      - ./wp-content/uploads:/var/www/html/wp-content/uploads
+    networks:
+      - gfoss-internal
+      - npm-net
+    labels:
+      # Help Portainer / NPM identify the upstream
+      gfoss.role: "wordpress"
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: gfoss-mailpit
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    networks: [gfoss-internal, npm-net]
+    profiles: [dev]
+
+  wpcli:
+    image: wordpress:cli-php8.3
+    container_name: gfoss-wpcli
+    user: "33:33"
+    depends_on: [wordpress]
+    environment:
+      WORDPRESS_DB_HOST: db:3306
+      WORDPRESS_DB_USER: ${MYSQL_USER}
+      WORDPRESS_DB_PASSWORD: ${MYSQL_PASSWORD}
+      WORDPRESS_DB_NAME: ${MYSQL_DATABASE}
+      # DEVE combaciare col prefisso del servizio wordpress, altrimenti wp-cli
+      # (install, seed-pages, migrazioni) opera su tabelle diverse da quelle che
+      # il sito legge → il sito risulterebbe "non installato".
+      WORDPRESS_TABLE_PREFIX: gfoss_
+    volumes:
+      - wp_core:/var/www/html
+      - ./wp-content/themes/gfoss-2026:/var/www/html/wp-content/themes/gfoss-2026
+      - ./wp-content/plugins/gfoss-members:/var/www/html/wp-content/plugins/gfoss-members
+      - ./wp-content/plugins/gfoss-accounting:/var/www/html/wp-content/plugins/gfoss-accounting
+      - ./wp-content/plugins/rndt-manager:/var/www/html/wp-content/plugins/rndt-manager
+      - ./wp-content/uploads:/var/www/html/wp-content/uploads
+      - ./scripts:/scripts
+    networks: [gfoss-internal]
+    profiles: [tools]
+    entrypoint: ["wp", "--allow-root"]
+
+volumes:
+  db_data:
+  wp_core:
+
+networks:
+  gfoss-internal:
+  npm-net:
+    external: true
+    name: ${NPM_NETWORK_NAME:-npm-net}

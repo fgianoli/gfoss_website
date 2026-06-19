@@ -1,0 +1,47 @@
+/* GFOSS members — public form */
+
+.gf-form { max-width: 760px; margin: 0 auto; }
+.gf-form * { box-sizing: border-box; }
+
+.gf-fset { border: 1px solid #E2E8EC; border-radius: 12px; padding: 1.25rem 1.5rem 1.5rem; margin: 0 0 1.5rem; background: #fff; }
+.gf-fset > legend { font-family: Manrope, sans-serif; font-weight: 700; padding: 0 .5rem; color: #1A6FA0; }
+
+.gf-grid { display: grid; gap: 1rem 1.25rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 600px) { .gf-grid { grid-template-columns: 1fr; } }
+.gf-col-2 { grid-column: 1 / -1; }
+
+.gf-field { display: flex; flex-direction: column; gap: .35rem; }
+.gf-field__lbl { font-weight: 500; font-size: .9rem; color: #0F2330; }
+.gf-field input,
+.gf-field textarea {
+    width: 100%;
+    border: 1.5px solid #E2E8EC;
+    border-radius: 8px;
+    padding: .65rem .8rem;
+    font: inherit;
+    background: #FAFBFC;
+    transition: border-color .12s, box-shadow .12s;
+}
+.gf-field input:focus,
+.gf-field textarea:focus { outline: 0; border-color: #2BA5D9; box-shadow: 0 0 0 3px rgba(43,165,217,.2); background: #fff; }
+.gf-field--err input,
+.gf-field--err textarea { border-color: #C0392B; background: #FFF5F4; }
+.gf-mono input { font-family: 'JetBrains Mono', ui-monospace, monospace; text-transform: uppercase; letter-spacing: .04em; }
+
+.gf-check { display: flex; align-items: flex-start; gap: .65rem; padding: .35rem 0; line-height: 1.45; }
+.gf-check input { margin-top: .25rem; flex-shrink: 0; }
+
+.gf-card { border-radius: 12px; padding: 1.25rem 1.5rem; margin-bottom: 1.5rem; }
+.gf-card--success { background: #E5F2DF; border: 1px solid #5DA34D; color: #14391C; }
+.gf-card--success ol { padding-left: 1.4rem; }
+.gf-card--error { background: #FCE3DF; border: 1px solid #C0392B; color: #5A1611; }
+.gf-card--error ul { margin: .5rem 0 0; padding-left: 1.4rem; }
+
+.gf-actions { display: flex; justify-content: center; margin: 1rem 0 .5rem; }
+.gf-btn { display: inline-flex; align-items: center; gap: .5rem; padding: .7rem 1.3rem; border: 1.5px solid transparent; border-radius: 999px; font-weight: 600; cursor: pointer; text-decoration: none; }
+.gf-btn--primary { background: #1A6FA0; color: #fff; }
+.gf-btn--primary:hover { background: #155678; color: #fff; }
+.gf-btn--lg { padding: .9rem 1.6rem; font-size: 1.05rem; }
+
+.gf-muted { color: #4A5C6A; font-size: .9rem; }
+.gf-hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }

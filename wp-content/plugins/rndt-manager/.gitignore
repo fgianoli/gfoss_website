@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Build output
+# Uncomment to exclude build folder during development:
+# build/
+
+# IDE
+.idea/
+.vscode/
+*.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+*.pid
+*.seed
+*.pid.lock
+
+# Test coverage
+coverage/
+
+# Optional npm cache
+.npm
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# WordPress debug
+wp-content/debug.log
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*~
+
+# Package files
+*.zip
+*.tar.gz
+
+# PHP dependencies (if using Composer)
+vendor/
+composer.lock

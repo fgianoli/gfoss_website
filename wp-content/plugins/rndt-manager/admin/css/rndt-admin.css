@@ -1,0 +1,657 @@
+/**
+ * RNDT Manager - Admin Styles
+ *
+ * @package RNDT_Manager
+ */
+
+/* =========================================
+   Card style per le pagine admin
+   ========================================= */
+
+.rndt-admin-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.rndt-admin-card h2 {
+    margin-top: 0;
+    padding-top: 0;
+    border-bottom: 1px solid #c3c4c7;
+    padding-bottom: 10px;
+}
+
+/* =========================================
+   Status badges
+   ========================================= */
+
+.rndt-status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.rndt-status-draft {
+    background: #f0f0f1;
+    color: #50575e;
+}
+
+.rndt-status-validated {
+    background: #d4edda;
+    color: #155724;
+}
+
+.rndt-status-published {
+    background: #cce5ff;
+    color: #004085;
+}
+
+.rndt-status-error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* =========================================
+   Resource type badges
+   ========================================= */
+
+.rndt-resource-type {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.rndt-resource-type-dataset {
+    background: #e7f3ff;
+    color: #0073aa;
+}
+
+.rndt-resource-type-series {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.rndt-resource-type-service {
+    background: #d4edda;
+    color: #155724;
+}
+
+.rndt-resource-type-application {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* =========================================
+   Loading spinner
+   ========================================= */
+
+.rndt-loading {
+    text-align: center;
+    padding: 40px;
+}
+
+.rndt-loading .spinner {
+    float: none;
+    margin: 0 auto;
+}
+
+/* =========================================
+   Connection test results
+   ========================================= */
+
+.rndt-test-result {
+    display: inline-block;
+    margin-left: 10px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.rndt-test-result.success,
+.rndt-test-success {
+    background: #d4edda;
+    color: #155724;
+}
+
+.rndt-test-result.error,
+.rndt-test-error {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.rndt-test-result.loading {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* =========================================
+   Settings page
+   ========================================= */
+
+.rndt-settings-wrap {
+    max-width: 1000px;
+}
+
+/* Database actions */
+.rndt-db-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.rndt-db-actions .button {
+    margin: 0;
+}
+
+.rndt-db-actions .spinner {
+    float: none;
+    margin: 0;
+}
+
+.rndt-settings-wrap .form-table th {
+    width: 200px;
+    padding: 15px 10px 15px 0;
+}
+
+.rndt-settings-wrap .form-table td {
+    padding: 15px 10px;
+}
+
+.rndt-settings-wrap h2 {
+    padding-top: 20px;
+    border-top: 1px solid #ddd;
+    margin-top: 30px;
+}
+
+.rndt-settings-wrap h2:first-of-type {
+    border-top: none;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.rndt-settings-tabs {
+    margin-bottom: 20px;
+}
+
+.rndt-settings-tabs .nav-tab-wrapper {
+    margin-bottom: 0;
+}
+
+/* =========================================
+   Import page
+   ========================================= */
+
+.rndt-import-wrap {
+    max-width: 800px;
+}
+
+.rndt-import-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.rndt-import-section h3 {
+    margin-top: 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.rndt-import-section p {
+    color: #666;
+    margin-bottom: 15px;
+}
+
+.rndt-import-dropzone {
+    border: 2px dashed #c3c4c7;
+    border-radius: 4px;
+    padding: 40px;
+    text-align: center;
+    background: #f6f7f7;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.rndt-import-dropzone:hover,
+.rndt-import-dropzone.drag-over,
+.rndt-import-dropzone.dragover {
+    border-color: #2271b1;
+    background: #f0f6fc;
+}
+
+.rndt-import-dropzone .dashicons {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #c3c4c7;
+    margin-bottom: 10px;
+}
+
+.rndt-import-dropzone:hover .dashicons {
+    color: #2271b1;
+}
+
+.rndt-import-dropzone p {
+    margin: 10px 0 0;
+    color: #50575e;
+}
+
+.rndt-import-dropzone .button {
+    margin-top: 15px;
+}
+
+/* File selezionati */
+.rndt-import-files {
+    margin-top: 20px;
+}
+
+.rndt-import-file {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+.rndt-import-file .dashicons {
+    margin-right: 10px;
+    color: #0073aa;
+}
+
+.rndt-import-file .filename {
+    flex: 1;
+}
+
+.rndt-import-file .filesize {
+    color: #666;
+    margin-right: 10px;
+}
+
+.rndt-import-file .remove {
+    color: #dc3232;
+    cursor: pointer;
+}
+
+/* Progress */
+.rndt-import-progress {
+    margin-top: 20px;
+    display: none;
+}
+
+.rndt-import-progress.active {
+    display: block;
+}
+
+.rndt-progress-bar {
+    height: 20px;
+    background: #f0f0f0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.rndt-progress-bar-fill {
+    height: 100%;
+    background: #2271b1;
+    transition: width 0.3s;
+    width: 0;
+}
+
+.rndt-progress-text {
+    margin-top: 10px;
+    text-align: center;
+    color: #666;
+}
+
+/* Risultati importazione */
+.rndt-import-results {
+    margin-top: 20px;
+}
+
+.rndt-import-result-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+}
+
+.rndt-import-result-item.success {
+    background: #d4edda;
+}
+
+.rndt-import-result-item.error {
+    background: #f8d7da;
+}
+
+.rndt-import-result-item .dashicons {
+    margin-right: 10px;
+}
+
+.rndt-import-result-item.success .dashicons {
+    color: #155724;
+}
+
+.rndt-import-result-item.error .dashicons {
+    color: #721c24;
+}
+
+/* CSW Import */
+.rndt-csw-import-form {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: end;
+}
+
+.rndt-csw-import-form .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.rndt-csw-import-form label {
+    font-weight: 600;
+}
+
+.rndt-csw-results {
+    margin-top: 20px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.rndt-csw-record {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f9f9f9;
+    border-radius: 4px;
+    margin-bottom: 5px;
+}
+
+.rndt-csw-record input[type="checkbox"] {
+    margin-right: 10px;
+}
+
+.rndt-csw-record .title {
+    flex: 1;
+    font-weight: 500;
+}
+
+.rndt-csw-record .identifier {
+    color: #666;
+    font-size: 12px;
+}
+
+/* =========================================
+   Lista metadati - Colonne
+   ========================================= */
+
+.column-resource_type {
+    width: 120px;
+}
+
+.column-inspire_themes {
+    width: 200px;
+}
+
+.column-file_identifier {
+    width: 180px;
+}
+
+.column-validation {
+    width: 100px;
+    text-align: center;
+}
+
+.column-csw_status {
+    width: 60px;
+    text-align: center;
+}
+
+/* Row actions */
+.rndt-row-actions {
+    visibility: hidden;
+}
+
+.wp-list-table tr:hover .rndt-row-actions {
+    visibility: visible;
+}
+
+/* =========================================
+   Wizard mount point loading
+   ========================================= */
+
+#rndt-metadata-editor .rndt-wizard-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+}
+
+.rndt-wizard-container {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 0;
+}
+
+/* =========================================
+   Dashboard widget
+   ========================================= */
+
+.rndt-dashboard-widget {
+    padding: 10px;
+}
+
+.rndt-dashboard-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.rndt-stat-card {
+    text-align: center;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+
+.rndt-stat-card .number {
+    font-size: 32px;
+    font-weight: bold;
+    color: #0073aa;
+}
+
+.rndt-stat-card .label {
+    color: #666;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+.rndt-dashboard-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+/* =========================================
+   Modale anteprima XML
+   ========================================= */
+
+.rndt-xml-preview-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 100000;
+}
+
+.rndt-xml-preview-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rndt-xml-preview-content {
+    background: #fff;
+    border-radius: 4px;
+    width: 90%;
+    max-width: 1000px;
+    max-height: 90%;
+    display: flex;
+    flex-direction: column;
+}
+
+.rndt-xml-preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #ddd;
+}
+
+.rndt-xml-preview-header h3 {
+    margin: 0;
+}
+
+.rndt-xml-preview-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+
+.rndt-xml-preview-close:hover {
+    color: #000;
+}
+
+.rndt-xml-preview-body {
+    flex: 1;
+    overflow: auto;
+    padding: 0;
+}
+
+.rndt-xml-preview-body pre {
+    margin: 0;
+    padding: 20px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.rndt-xml-preview-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #ddd;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Syntax highlighting per XML */
+.rndt-xml-preview-body .xml-tag {
+    color: #569cd6;
+}
+
+.rndt-xml-preview-body .xml-attr {
+    color: #9cdcfe;
+}
+
+.rndt-xml-preview-body .xml-value {
+    color: #ce9178;
+}
+
+.rndt-xml-preview-body .xml-comment {
+    color: #6a9955;
+}
+
+/* =========================================
+   Tooltip
+   ========================================= */
+
+.rndt-tooltip {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+}
+
+.rndt-tooltip .tooltip-text {
+    visibility: hidden;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 5px 10px;
+    border-radius: 4px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.rndt-tooltip:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* =========================================
+   Responsive
+   ========================================= */
+
+@media screen and (max-width: 782px) {
+    .rndt-admin-card {
+        padding: 15px;
+    }
+
+    .rndt-dashboard-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .rndt-settings-wrap .form-table th {
+        width: auto;
+        display: block;
+        padding-bottom: 5px;
+    }
+
+    .rndt-settings-wrap .form-table td {
+        display: block;
+        padding-top: 0;
+    }
+
+    .rndt-csw-import-form {
+        grid-template-columns: 1fr;
+    }
+
+    .column-inspire_themes,
+    .column-file_identifier {
+        display: none;
+    }
+}

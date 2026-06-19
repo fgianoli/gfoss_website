@@ -1,0 +1,21 @@
+.env
+.env.local
+docker-compose.override.yml
+*.log
+.DS_Store
+Thumbs.db
+
+# WP runtime data
+wp-content/uploads/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/debug.log
+
+# Build artifacts
+node_modules/
+vendor/
+*.zip
+
+# IDE
+.idea/
+.vscode/
