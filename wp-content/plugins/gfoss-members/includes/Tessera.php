@@ -62,7 +62,11 @@ class Tessera {
     }
 
     public static function download_url( int $user_id ): string {
-        return rest_url( 'gfoss/v1/tessera?user=' . $user_id );
+        // Il nonce wp_rest autentica la richiesta via cookie (senza, la REST è anonima → 401).
+        return add_query_arg(
+            [ 'user' => $user_id, '_wpnonce' => wp_create_nonce( 'wp_rest' ) ],
+            rest_url( 'gfoss/v1/tessera' )
+        );
     }
 
     /** PDF binario (string) o WP_Error. */

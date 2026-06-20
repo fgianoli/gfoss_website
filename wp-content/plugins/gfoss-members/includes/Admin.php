@@ -43,7 +43,17 @@ class Admin {
     }
 
     public static function maybe_handle_actions(): void {
-        // Le azioni POST/GET (approva candidatura, registra pagamento, ecc.) verranno gestite qui in fase 2.
+        // Le schede admin gestiscono i form POST nel rendering della pagina e poi
+        // fanno wp_safe_redirect (pattern PRG). In produzione però output_buffering=0:
+        // l'header admin è già stato inviato e il redirect fallirebbe lasciando una
+        // pagina bianca. Avviamo un output buffer sui POST alle NOSTRE pagine admin,
+        // così l'header Location può essere inviato e il redirect funziona.
+        if ( ! empty( $_POST )
+             && isset( $_GET['page'] )
+             && str_starts_with( (string) $_GET['page'], 'gfoss-' )
+             && ! ob_get_level() ) {
+            ob_start();
+        }
     }
 
     public static function view_dashboard(): void { self::render( 'dashboard' ); }

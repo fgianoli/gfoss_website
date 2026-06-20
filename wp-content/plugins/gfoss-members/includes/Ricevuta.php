@@ -30,7 +30,11 @@ class Ricevuta {
     }
 
     public static function download_url( int $user_id, int $anno ): string {
-        return rest_url( 'gfoss/v1/ricevuta?user=' . $user_id . '&anno=' . $anno );
+        // Il nonce wp_rest autentica la richiesta via cookie (senza, la REST è anonima → 401).
+        return add_query_arg(
+            [ 'user' => $user_id, 'anno' => $anno, '_wpnonce' => wp_create_nonce( 'wp_rest' ) ],
+            rest_url( 'gfoss/v1/ricevuta' )
+        );
     }
 
     public static function rest_download( \WP_REST_Request $req ) {

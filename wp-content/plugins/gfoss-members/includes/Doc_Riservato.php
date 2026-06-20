@@ -201,7 +201,7 @@ class Doc_Riservato {
         foreach ( $by_cat as $cat => $list ) {
             echo '<section class="gf-docs__cat"><h3>' . esc_html( $cat ) . '</h3><ul>';
             foreach ( $list as $d ) {
-                $url = rest_url( 'gfoss/v1/doc/' . $d->ID );
+                $url = add_query_arg( '_wpnonce', wp_create_nonce( 'wp_rest' ), rest_url( 'gfoss/v1/doc/' . $d->ID ) );
                 echo '<li><a href="' . esc_url( $url ) . '">' . esc_html( $d->post_title ) . '</a> '
                    . '<small class="gf-muted">' . esc_html( get_the_date( 'd/m/Y', $d ) ) . '</small></li>';
             }
