@@ -43,18 +43,36 @@ class Email {
     }
 
     private static function wrap( string $title, string $inner ): string {
-        $brand = '#1A6FA0';
-        $logo  = esc_html( get_bloginfo( 'name' ) );
-        return '<!doctype html><html lang="it"><body style="margin:0;background:#FAFBFC;font-family:Inter,Arial,sans-serif;color:#0F2330">'
+        // Personalizzabili via filtro senza modificare il plugin:
+        //   add_filter('gfoss_members_email_brand_color', fn() => '#XXXXXX');
+        //   add_filter('gfoss_members_email_footer', fn() => 'Testo footer...');
+        //   add_filter('gfoss_members_email_wrap', fn($html,$title,$inner) => ..., 10, 3);
+        $brand = apply_filters( 'gfoss_members_email_brand_color', '#1A6FA0' );
+
+        // Header: logo del sito se impostato, altrimenti il nome del sito.
+        $logo_id  = (int) get_theme_mod( 'custom_logo' );
+        $logo_src = $logo_id ? wp_get_attachment_image_url( $logo_id, 'medium' ) : '';
+        $header   = $logo_src
+            ? '<img src="' . esc_url( $logo_src ) . '" alt="' . esc_attr( get_bloginfo( 'name' ) ) . '" style="height:42px;width:auto;display:block">'
+            : '<span style="font-weight:700;font-size:18px;color:' . esc_attr( $brand ) . '">' . esc_html( get_bloginfo( 'name' ) ) . '</span>';
+
+        $footer = apply_filters(
+            'gfoss_members_email_footer',
+            "Associazione Italiana per l'Informazione Geografica Libera APS · Padova"
+        );
+
+        $html = '<!doctype html><html lang="it"><body style="margin:0;background:#FAFBFC;font-family:Inter,Arial,sans-serif;color:#0F2330">'
             . '<div style="max-width:600px;margin:0 auto;padding:24px">'
-            . '<div style="background:#fff;border-radius:12px;overflow:hidden;border:1px solid #E2E8EC">'
-            . '<div style="background:' . $brand . ';color:#fff;padding:16px 24px;font-weight:700;font-size:16px">' . $logo . '</div>'
+            . '<div style="background:#fff;border-radius:12px;overflow:hidden;border:1px solid #E2E8EC;border-top:4px solid ' . esc_attr( $brand ) . '">'
+            . '<div style="background:#fff;padding:18px 24px;border-bottom:1px solid #E2E8EC">' . $header . '</div>'
             . '<div style="padding:24px;line-height:1.55;font-size:15px">' . $inner . '</div>'
             . '</div>'
             . '<p style="text-align:center;color:#7A8A95;font-size:12px;margin-top:16px">'
-            . "Associazione Italiana per l'Informazione Geografica Libera APS · Padova · "
+            . esc_html( $footer ) . ' · '
             . '<a href="' . esc_url( home_url() ) . '" style="color:#7A8A95">' . esc_html( home_url() ) . '</a></p>'
             . '</div></body></html>';
+
+        return (string) apply_filters( 'gfoss_members_email_wrap', $html, $title, $inner );
     }
 
     // ---------------------------------------------------------------------
