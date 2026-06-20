@@ -38,17 +38,19 @@ class Roles {
         $caps_presidente  = array_merge( $caps_consigliere, [ self::CAP_MANAGE_ASSEMBLEE => true ] );
         $caps_tesoriere   = array_merge( $caps_socio, self::caps_tesoriere() );
         $caps_revisore    = array_merge( $caps_socio, [ self::CAP_VIEW_ACCOUNTING => true ] );
+        $caps_comunicazione = array_merge( $caps_socio, self::caps_comunicazione() );
 
-        self::upsert_role( 'gfoss_socio',       __( 'Socio GFOSS', 'gfoss-members' ),       $caps_socio );
-        self::upsert_role( 'gfoss_consigliere', __( 'Consigliere',  'gfoss-members' ),       $caps_consigliere );
-        self::upsert_role( 'gfoss_presidente',  __( 'Presidente',   'gfoss-members' ),       $caps_presidente );
-        self::upsert_role( 'gfoss_tesoriere',   __( 'Tesoriere',    'gfoss-members' ),       $caps_tesoriere );
-        self::upsert_role( 'gfoss_revisore',    __( 'Revisore',     'gfoss-members' ),       $caps_revisore );
+        self::upsert_role( 'gfoss_socio',         __( 'Socio GFOSS', 'gfoss-members' ),   $caps_socio );
+        self::upsert_role( 'gfoss_consigliere',   __( 'Consigliere',  'gfoss-members' ),   $caps_consigliere );
+        self::upsert_role( 'gfoss_presidente',    __( 'Presidente',   'gfoss-members' ),   $caps_presidente );
+        self::upsert_role( 'gfoss_tesoriere',     __( 'Tesoriere',    'gfoss-members' ),   $caps_tesoriere );
+        self::upsert_role( 'gfoss_revisore',      __( 'Revisore',     'gfoss-members' ),   $caps_revisore );
+        self::upsert_role( 'gfoss_comunicazione', __( 'Comunicazione', 'gfoss-members' ),  $caps_comunicazione );
 
         // Administrator ottiene tutto.
         $admin = get_role( 'administrator' );
         if ( $admin ) {
-            foreach ( array_keys( array_merge( $caps_consigliere, $caps_tesoriere, $caps_presidente ) ) as $cap ) {
+            foreach ( array_keys( array_merge( $caps_consigliere, $caps_tesoriere, $caps_presidente, $caps_comunicazione ) ) as $cap ) {
                 $admin->add_cap( $cap );
             }
         }
@@ -104,6 +106,23 @@ class Roles {
             self::CAP_VIEW_ACCOUNTING       => true,
             self::CAP_MANAGE_ACCOUNTING     => true,
             self::CAP_EXPORT_REGISTRO       => true,
+        ];
+    }
+
+    /**
+     * Comunicazione: socio che può creare e pubblicare le News del sito
+     * (capability sui post WordPress = News). Niente accesso a soci/contabilità.
+     */
+    private static function caps_comunicazione(): array {
+        return [
+            'upload_files'           => true,
+            'edit_posts'             => true,
+            'edit_others_posts'      => true,
+            'edit_published_posts'   => true,
+            'publish_posts'          => true,
+            'delete_posts'           => true,
+            'delete_published_posts' => true,
+            'manage_categories'      => true,
         ];
     }
 

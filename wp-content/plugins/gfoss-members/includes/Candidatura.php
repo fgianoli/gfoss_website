@@ -253,19 +253,16 @@ class Candidatura {
         do_action( 'gfoss_members_candidatura_effective', $user_id, self::get( (int) $cand['id'] ) );
     }
 
-    private static function next_numero_socio(): int {
-        $next = (int) get_option( 'gfoss_next_numero_socio', 0 );
-        if ( $next < 1 ) {
-            // Calcola dal massimo esistente nei meta.
-            global $wpdb;
-            $max = (int) $wpdb->get_var(
-                "SELECT MAX(CAST(meta_value AS UNSIGNED)) FROM {$wpdb->usermeta}
-                 WHERE meta_key = 'gf_numero_socio'"
-            );
-            $next = max( 1, $max + 1 );
-        }
-        update_option( 'gfoss_next_numero_socio', $next + 1, false );
-        return $next;
+    /**
+     * Numero socio nel formato ANNO-NNNNN (es. 2026-00001): anno di iscrizione +
+     * progressivo a 5 cifre che riparte ogni anno. Generato all'approvazione.
+     */
+    private static function next_numero_socio(): string {
+        $year = (int) gmdate( 'Y' );
+        $opt  = 'gfoss_numero_socio_seq_' . $year;
+        $seq  = (int) get_option( $opt, 0 ) + 1;
+        update_option( $opt, $seq, false );
+        return sprintf( '%d-%05d', $year, $seq );
     }
 
     public static function new_token(): string {

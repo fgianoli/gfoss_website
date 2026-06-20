@@ -2,7 +2,13 @@
 namespace GFOSS_Members;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-$users = get_users( [ 'role__in' => [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore' ], 'orderby' => 'display_name' ] );
+// Vista dettaglio se ?id presente.
+if ( ! empty( $_GET['id'] ) ) {
+    require GFOSS_MEMBERS_DIR . 'admin/views/socio.php';
+    return;
+}
+
+$users = get_users( [ 'role__in' => [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione' ], 'orderby' => 'display_name' ] );
 $year  = (int) gmdate( 'Y' );
 ?>
 <div class="wrap">
@@ -40,7 +46,7 @@ $year  = (int) gmdate( 'Y' );
                 <td><?php echo esc_html( implode( ', ', $u->roles ) ); ?></td>
                 <td><span style="display:inline-block;padding:.15rem .55rem;border-radius:999px;background:<?php echo esc_attr( $chip[2] ); ?>;color:<?php echo esc_attr( $chip[1] ); ?>;font-weight:600;font-size:.75rem"><?php echo esc_html( $chip[0] ); ?></span></td>
                 <td><?php echo get_user_meta( $u->ID, 'gf_volontario', true ) === '1' ? '✓' : ''; ?></td>
-                <td><a class="button button-small" href="<?php echo esc_url( admin_url( 'user-edit.php?user_id=' . $u->ID ) ); ?>"><?php esc_html_e( 'Apri', 'gfoss-members' ); ?></a></td>
+                <td><a class="button button-small" href="<?php echo esc_url( admin_url( 'admin.php?page=gfoss-soci&id=' . $u->ID ) ); ?>"><?php esc_html_e( 'Apri scheda', 'gfoss-members' ); ?></a></td>
             </tr>
         <?php endforeach; ?>
         </tbody>

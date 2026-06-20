@@ -101,6 +101,16 @@ class Quote {
         return $id;
     }
 
+    /** Segna come NON pagata (pending) la quota di un anno, se esiste. */
+    public static function mark_unpaid( int $user_id, int $anno ): void {
+        global $wpdb;
+        $wpdb->update(
+            Schema::table_quote(),
+            [ 'stato' => 'pending', 'data_pagamento' => null, 'transaction_ref' => null ],
+            [ 'user_id' => $user_id, 'anno' => $anno ]
+        );
+    }
+
     /** Lista quote di un singolo socio (storico). */
     public static function for_user( int $user_id ): array {
         global $wpdb;
