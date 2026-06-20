@@ -6,7 +6,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_THEME_VERSION', '1.2.0' );
+define( 'GFOSS_THEME_VERSION', '1.2.1' );
 define( 'GFOSS_THEME_DIR', get_template_directory() );
 define( 'GFOSS_THEME_URI', get_template_directory_uri() );
 

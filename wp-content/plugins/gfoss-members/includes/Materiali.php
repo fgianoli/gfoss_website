@@ -22,6 +22,7 @@ class Materiali {
         add_action( 'add_meta_boxes',         [ __CLASS__, 'metabox' ] );
         add_action( 'save_post_' . self::CPT, [ __CLASS__, 'save' ], 10, 2 );
         add_shortcode( 'gfoss_materiali',     [ __CLASS__, 'shortcode' ] );
+        add_filter( 'the_content',            [ __CLASS__, 'append_to_content' ], 20 );
         add_filter( 'manage_' . self::CPT . '_posts_columns',       [ __CLASS__, 'columns' ] );
         add_action( 'manage_' . self::CPT . '_posts_custom_column', [ __CLASS__, 'column_value' ], 10, 2 );
     }
@@ -72,6 +73,20 @@ class Materiali {
             <input type="url" name="gf_ris_url" value="<?php echo esc_attr( $url ); ?>" class="widefat" placeholder="https://…"></p>
         <p><label><strong>Categoria</strong></label><br>
             <input type="text" name="gf_ris_cat" value="<?php echo esc_attr( $cat ); ?>" class="widefat" placeholder="es. Presentazioni, Template, Branding"></p>
+        <p><label><strong>Collega a un contenuto</strong> <small>(opzionale)</small></label><br>
+            <?php $linked = (int) get_post_meta( $post->ID, '_gf_ris_post', true ); ?>
+            <select name="gf_ris_post" class="widefat">
+                <option value="0">— nessuno (solo area soci) —</option>
+                <?php
+                $choices = get_posts( [ 'post_type' => [ 'post', 'page' ], 'post_status' => 'publish', 'numberposts' => 300, 'orderby' => 'title', 'order' => 'ASC' ] );
+                foreach ( $choices as $c ) :
+                    $tag = $c->post_type === 'page' ? 'Pagina' : 'News';
+                    ?>
+                    <option value="<?php echo (int) $c->ID; ?>" <?php selected( $linked, $c->ID ); ?>>[<?php echo esc_html( $tag ); ?>] <?php echo esc_html( $c->post_title ); ?></option>
+                <?php endforeach; ?>
+            </select>
+            <small class="description">Se selezionato, la risorsa appare come download in fondo a quel contenuto (pubblico). Altrimenti resta nei materiali dell'area soci.</small>
+        </p>
         <script>
         (function(){ var b=document.getElementById('gfoss-ris-pick'); if(!b||!window.wp||!wp.media)return;
             b.addEventListener('click',function(e){e.preventDefault();
@@ -89,6 +104,44 @@ class Materiali {
         update_post_meta( $post_id, '_gf_ris_file', (int) ( $_POST['gf_ris_file'] ?? 0 ) );
         update_post_meta( $post_id, '_gf_ris_url',  esc_url_raw( wp_unslash( $_POST['gf_ris_url'] ?? '' ) ) );
         update_post_meta( $post_id, '_gf_ris_cat',  sanitize_text_field( wp_unslash( $_POST['gf_ris_cat'] ?? '' ) ) );
+        update_post_meta( $post_id, '_gf_ris_post', (int) ( $_POST['gf_ris_post'] ?? 0 ) );
+    }
+
+    /** Risorse collegate a un contenuto (post/pagina). */
+    public static function linked_resources( int $post_id ): array {
+        if ( $post_id <= 0 ) { return []; }
+        return get_posts( [
+            'post_type'      => self::CPT,
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'meta_key'       => '_gf_ris_post',
+            'meta_value'     => (string) $post_id,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+        ] );
+    }
+
+    /** Mostra in fondo al contenuto le risorse collegate (download pubblici). */
+    public static function append_to_content( string $content ): string {
+        if ( ! is_singular() || ! in_the_loop() || ! is_main_query() ) { return $content; }
+        $items = self::linked_resources( (int) get_the_ID() );
+        if ( ! $items ) { return $content; }
+
+        ob_start();
+        echo '<section class="gf-allegati"><h3>Risorse e allegati</h3><ul class="gf-doclist">';
+        foreach ( $items as $it ) {
+            $url = self::file_url( $it->ID );
+            echo '<li>';
+            echo $url
+                ? '<a href="' . esc_url( $url ) . '" target="_blank" rel="noopener">' . esc_html( $it->post_title ) . '</a>'
+                : esc_html( $it->post_title );
+            if ( $it->post_content ) {
+                echo ' <small class="gf-muted">— ' . esc_html( wp_trim_words( wp_strip_all_tags( $it->post_content ), 16 ) ) . '</small>';
+            }
+            echo '</li>';
+        }
+        echo '</ul></section>';
+        return $content . ob_get_clean();
     }
 
     public static function columns( array $cols ): array {
@@ -123,9 +176,12 @@ class Materiali {
 
         $by_cat = [];
         foreach ( $items as $it ) {
+            // Le risorse collegate a un contenuto si mostrano su quel contenuto, non qui.
+            if ( (int) get_post_meta( $it->ID, '_gf_ris_post', true ) > 0 ) { continue; }
             $cat = (string) get_post_meta( $it->ID, '_gf_ris_cat', true ) ?: 'Generale';
             $by_cat[ $cat ][] = $it;
         }
+        if ( ! $by_cat ) { return '<div class="gf-card">Nessun materiale disponibile.</div>'; }
         ksort( $by_cat );
 
         ob_start();
