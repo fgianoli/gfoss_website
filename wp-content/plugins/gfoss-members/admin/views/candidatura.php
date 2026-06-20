@@ -26,6 +26,15 @@ if ( ! empty( $_POST['_action'] ) && current_user_can( Roles::CAP_REVIEW_CANDIDA
         wp_safe_redirect( add_query_arg( 'msg', 'rejected', wp_get_referer() ) );
         exit;
     }
+    if ( $_POST['_action'] === 'record_payment' ) {
+        $amount = (float) str_replace( ',', '.', (string) ( $_POST['importo'] ?? '' ) );
+        if ( $amount <= 0 ) { $amount = Quote::default_amount(); }
+        $method = sanitize_key( (string) ( $_POST['metodo'] ?? 'bonifico' ) );
+        $ref    = sanitize_text_field( wp_unslash( $_POST['ref'] ?? '' ) ) ?: 'registrato a mano';
+        Candidatura::record_payment( $id, $amount, $method, $ref );
+        wp_safe_redirect( add_query_arg( 'msg', 'payment_recorded', wp_get_referer() ) );
+        exit;
+    }
 }
 
 $msg = sanitize_key( (string) ( $_GET['msg'] ?? '' ) );
@@ -41,6 +50,7 @@ $can_review = current_user_can( Roles::CAP_REVIEW_CANDIDATURE );
     <?php if ( $msg === 'approved' ) : ?><div class="notice notice-success is-dismissible"><p>Candidatura approvata. Se il pagamento è già registrato, l'utente è stato creato automaticamente.</p></div><?php endif; ?>
     <?php if ( $msg === 'rejected' ) : ?><div class="notice notice-warning is-dismissible"><p>Candidatura respinta. Email di notifica inviata al candidato.</p></div><?php endif; ?>
     <?php if ( $msg === 'reject_needs_note' ) : ?><div class="notice notice-error"><p>La motivazione è obbligatoria per respingere.</p></div><?php endif; ?>
+    <?php if ( $msg === 'payment_recorded' ) : ?><div class="notice notice-success is-dismissible"><p>Pagamento registrato. Se la candidatura è approvata, l'utente socio è stato creato con la quota in regola.</p></div><?php endif; ?>
 
     <div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;margin-top:1rem">
         <div class="card" style="background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px">
@@ -101,6 +111,31 @@ $can_review = current_user_can( Roles::CAP_REVIEW_CANDIDATURE );
                             <button type="submit" name="_action" value="approve" class="button button-primary">Approva</button>
                             <button type="submit" name="_action" value="reject" class="button" onclick="return confirm('Confermi il rigetto?')">Respingi</button>
                         </p>
+                    </form>
+                </div>
+            <?php endif; ?>
+
+            <?php if ( $can_review && $cand['payment_status'] !== 'paid' && ! in_array( $cand['stato'], [ Candidatura::STATO_REJECTED, Candidatura::STATO_WITHDRAWN ], true ) ) : ?>
+                <div class="card" style="background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px;margin-top:16px">
+                    <h2 style="margin-top:0">Registra pagamento ricevuto</h2>
+                    <p class="description">Per bonifici o contanti già incassati. Registrandolo, se la candidatura è approvata l'utente socio viene creato con la quota in regola.</p>
+                    <form method="post">
+                        <?php wp_nonce_field( 'gfoss_cand_' . $id ); ?>
+                        <input type="hidden" name="_action" value="record_payment">
+                        <p>
+                            <label>Metodo
+                                <select name="metodo">
+                                    <option value="bonifico">Bonifico</option>
+                                    <option value="contanti">Contanti</option>
+                                    <option value="altro">Altro</option>
+                                </select>
+                            </label>
+                            &nbsp; <label>Importo €
+                                <input type="text" name="importo" value="<?php echo esc_attr( number_format( Quote::default_amount(), 2, '.', '' ) ); ?>" size="6">
+                            </label>
+                            &nbsp; <label>Rif. <input type="text" name="ref" placeholder="es. CRO bonifico" size="14"></label>
+                        </p>
+                        <button type="submit" class="button button-primary">Registra pagamento</button>
                     </form>
                 </div>
             <?php endif; ?>
