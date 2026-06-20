@@ -33,6 +33,7 @@ class Admin {
         add_submenu_page( 'gfoss-associazione', __( 'Candidature nuovi soci', 'gfoss-members' ),   __( 'Candidature nuovi soci', 'gfoss-members' ),   Roles::CAP_REVIEW_CANDIDATURE,   'gfoss-candidature',            [ __CLASS__, 'view_candidature' ] );
         add_submenu_page( 'gfoss-associazione', __( 'Quote', 'gfoss-members' ),         __( 'Quote', 'gfoss-members' ),         Roles::CAP_MANAGE_QUOTE,         'gfoss-quote',                  [ __CLASS__, 'view_quote' ] );
         add_submenu_page( 'gfoss-associazione', __( 'Comunicazioni', 'gfoss-members' ), __( 'Comunicazioni', 'gfoss-members' ), Roles::CAP_MANAGE_SOCI,          'gfoss-comunicazioni',          [ __CLASS__, 'view_comunicazioni' ] );
+        add_submenu_page( 'gfoss-associazione', __( 'Email (template)', 'gfoss-members' ), __( 'Email', 'gfoss-members' ), Roles::CAP_MANAGE_SOCI,          'gfoss-email',                  [ __CLASS__, 'view_email' ] );
         add_submenu_page( 'gfoss-associazione', __( 'Esporta registro', 'gfoss-members' ), __( 'Esporta registro', 'gfoss-members' ), Roles::CAP_EXPORT_REGISTRO, 'gfoss-export',                 [ __CLASS__, 'view_export' ] );
     }
 
@@ -61,6 +62,7 @@ class Admin {
     public static function view_candidature(): void { self::render( 'candidature' ); }
     public static function view_quote(): void       { self::render( 'quote' ); }
     public static function view_comunicazioni(): void { self::render( 'comunicazioni' ); }
+    public static function view_email(): void       { self::render( 'email-settings' ); }
     public static function view_export(): void      { self::render( 'export' ); }
 
     private static function render( string $view ): void {

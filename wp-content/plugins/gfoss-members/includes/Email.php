@@ -14,6 +14,106 @@ class Email {
 
     public static function init(): void {
         add_filter( 'wp_mail_content_type', [ __CLASS__, 'html_content_type' ] );
+        add_action( 'admin_post_gfoss_email_settings_save', [ __CLASS__, 'save_settings' ] );
+    }
+
+    /** Impostazioni email personalizzabili da admin (Associazione → Email). */
+    public static function settings(): array {
+        $s = get_option( 'gfoss_email_settings', [] );
+        return is_array( $s ) ? $s : [];
+    }
+
+    private static function tpl_setting( string $key, string $field ): string {
+        $s = self::settings();
+        return (string) ( $s['tpl'][ $key ][ $field ] ?? '' );
+    }
+
+    private static function button( string $url, string $label, string $color = '#F39200' ): string {
+        return '<a href="' . esc_url( $url ) . '" style="display:inline-block;background:' . $color
+             . ';color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600">'
+             . esc_html( $label ) . '</a>';
+    }
+
+    /**
+     * Registro dei template email editabili: chiave => [label, subject, body, placeholders].
+     * Il corpo è HTML; i segnaposto {…} vengono sostituiti all'invio.
+     */
+    public static function templates(): array {
+        $iban  = defined( 'GFOSS_ASSOC_IBAN' ) ? GFOSS_ASSOC_IBAN : '';
+        return [
+            'candidatura_received' => [
+                'label'        => 'Conferma domanda di iscrizione (al candidato)',
+                'subject'      => '[GFOSS.it] Domanda di iscrizione ricevuta',
+                'body'         => "<h2 style=\"margin-top:0\">Domanda di iscrizione ricevuta</h2>\n<p>Ciao <strong>{nome}</strong>,</p>\n<p>abbiamo ricevuto la tua domanda di iscrizione a GFOSS.it APS. Sarà esaminata dal Consiglio Direttivo (art. 6 dello Statuto) e diventerà effettiva dopo l'approvazione e il pagamento della quota.</p>\n<p>Puoi versare la quota annuale di {importo} € fin da subito:</p>\n<p>{bottone_pagamento}</p>\n<p style=\"color:#4A5C6A\">Oppure tramite bonifico — IBAN <code>{iban}</code>, causale \"Nuova iscrizione anno {anno}\".</p>\n<p>Ti ricontatteremo a breve. Grazie!</p>",
+                'placeholders' => [ 'nome', 'cognome', 'importo', 'anno', 'iban', 'link_pagamento', 'bottone_pagamento' ],
+            ],
+            'candidatura_approved_pay_now' => [
+                'label'        => 'Domanda approvata, da pagare (al candidato)',
+                'subject'      => '[GFOSS.it] La tua domanda è stata approvata — completa il pagamento',
+                'body'         => "<h2 style=\"margin-top:0\">Domanda approvata 🎉</h2>\n<p>Ciao {nome}, il Consiglio Direttivo ha <strong>approvato</strong> la tua domanda.</p>\n<p>Per completare l'iscrizione, versa la quota associativa annuale ({importo} €):</p>\n<p>{bottone_pagamento}</p>\n<p>Riceverai le credenziali per accedere all'area soci appena risulterà il pagamento.</p>",
+                'placeholders' => [ 'nome', 'importo', 'anno', 'link_pagamento', 'bottone_pagamento' ],
+            ],
+            'candidatura_rejected' => [
+                'label'        => 'Domanda respinta (al candidato)',
+                'subject'      => '[GFOSS.it] Esito della tua domanda di iscrizione',
+                'body'         => "<h2 style=\"margin-top:0\">Esito della tua domanda</h2>\n<p>Ciao {nome}, il Consiglio Direttivo ha esaminato la tua domanda.</p>\n<p>Purtroppo non è stato possibile accoglierla. Ai sensi dell'art. 6 dello Statuto puoi richiedere che sull'istanza si pronunci l'Assemblea, scrivendo a info@gfoss.it entro 60 giorni.</p>\n{motivo_box}",
+                'placeholders' => [ 'nome', 'cognome', 'motivo_box' ],
+            ],
+            'candidatura_welcome' => [
+                'label'        => 'Benvenuto socio effettivo',
+                'subject'      => '[GFOSS.it] Benvenuto/a — la tua iscrizione è effettiva',
+                'body'         => "<h2 style=\"margin-top:0\">Benvenuto/a in GFOSS.it APS 🌍</h2>\n<p>Ciao <strong>{nome}</strong>, la tua iscrizione è ora <strong>effettiva</strong>.</p>\n<p>Numero socio: <code>{numero_socio}</code></p>\n<p>Riceverai un'email separata da WordPress per impostare la tua password. Una volta fatto, accedi all'area riservata:</p>\n<p>{bottone_area}</p>\n<p>Da lì potrai scaricare la tessera digitale, vedere lo storico quote, iscriverti agli eventi e accedere ai documenti riservati ai soci.</p>\n<p>Grazie per supportare il software libero geografico in Italia!</p>",
+                'placeholders' => [ 'nome', 'numero_socio', 'anno', 'link_area', 'bottone_area' ],
+            ],
+            'quota_renewal_reminder' => [
+                'label'        => 'Promemoria rinnovo quota',
+                'subject'      => '[GFOSS.it] Promemoria rinnovo quota {anno}',
+                'body'         => "<h2 style=\"margin-top:0\">Promemoria quota associativa {anno}</h2>\n<p>Ciao <strong>{nome}</strong>,</p>\n<p>{scadenza}</p>\n<p>Quota: <strong>{importo} €</strong></p>\n<p>{bottone_pagamento}</p>\n<p style=\"color:#4A5C6A\">Oppure bonifico — IBAN <code>{iban}</code>, causale \"Rinnovo iscrizione anno {anno}\".</p>\n<p>Grazie per il tuo supporto al software libero geografico in Italia!</p>",
+                'placeholders' => [ 'nome', 'anno', 'importo', 'iban', 'scadenza', 'link_pagamento', 'bottone_pagamento' ],
+            ],
+            'quota_last_call' => [
+                'label'        => 'Ultima chiamata rinnovo quota',
+                'subject'      => '[GFOSS.it] Ultima chiamata — rinnovo quota {anno}',
+                'body'         => "<h2 style=\"margin-top:0\">Ultima chiamata: quota {anno}</h2>\n<p>Ciao {nome},</p>\n<p>Risulta che non hai ancora rinnovato la quota associativa per l'anno in corso. Senza il rinnovo, ai sensi dell'art. 9 dello Statuto la qualità di associato si perde per mancato pagamento entro i termini.</p>\n<p>Se vuoi mantenere l'iscrizione e tornare in regola:</p>\n<p>{bottone_pagamento}</p>\n<p style=\"color:#4A5C6A\">Per qualsiasi problema scrivici a info@gfoss.it.</p>",
+                'placeholders' => [ 'nome', 'anno', 'link_pagamento', 'bottone_pagamento' ],
+            ],
+        ];
+    }
+
+    /** @return array{subject:string,body:string} con segnaposto sostituiti. */
+    public static function render( string $key, array $vars ): array {
+        $tpls = self::templates();
+        $def  = $tpls[ $key ] ?? [ 'subject' => '', 'body' => '' ];
+        $subject = self::tpl_setting( $key, 'subject' );
+        $body    = self::tpl_setting( $key, 'body' );
+        if ( trim( $subject ) === '' ) { $subject = $def['subject']; }
+        if ( trim( $body ) === '' )    { $body    = $def['body']; }
+        $search = []; $replace = [];
+        foreach ( $vars as $k => $v ) { $search[] = '{' . $k . '}'; $replace[] = (string) $v; }
+        return [
+            'subject' => str_replace( $search, $replace, $subject ),
+            'body'    => str_replace( $search, $replace, $body ),
+        ];
+    }
+
+    public static function save_settings(): void {
+        if ( ! current_user_can( Roles::CAP_MANAGE_SOCI ) ) { wp_die( 'forbidden', 403 ); }
+        check_admin_referer( 'gfoss_email_settings' );
+        $posted = ( isset( $_POST['tpl'] ) && is_array( $_POST['tpl'] ) ) ? wp_unslash( $_POST['tpl'] ) : [];
+        $s = [
+            'brand_color' => sanitize_hex_color( (string) ( $_POST['brand_color'] ?? '' ) ) ?: '',
+            'footer'      => sanitize_text_field( wp_unslash( $_POST['footer'] ?? '' ) ),
+            'tpl'         => [],
+        ];
+        foreach ( array_keys( self::templates() ) as $key ) {
+            $s['tpl'][ $key ] = [
+                'subject' => sanitize_text_field( (string) ( $posted[ $key ]['subject'] ?? '' ) ),
+                'body'    => wp_kses_post( (string) ( $posted[ $key ]['body'] ?? '' ) ),
+            ];
+        }
+        update_option( 'gfoss_email_settings', $s, false );
+        wp_safe_redirect( add_query_arg( 'msg', 'saved', admin_url( 'admin.php?page=gfoss-email' ) ) );
+        exit;
     }
 
     public static function html_content_type(): string { return 'text/html'; }
@@ -47,7 +147,8 @@ class Email {
         //   add_filter('gfoss_members_email_brand_color', fn() => '#XXXXXX');
         //   add_filter('gfoss_members_email_footer', fn() => 'Testo footer...');
         //   add_filter('gfoss_members_email_wrap', fn($html,$title,$inner) => ..., 10, 3);
-        $brand = apply_filters( 'gfoss_members_email_brand_color', '#1A6FA0' );
+        $cfg   = self::settings();
+        $brand = ! empty( $cfg['brand_color'] ) ? $cfg['brand_color'] : apply_filters( 'gfoss_members_email_brand_color', '#1A6FA0' );
 
         // Header: logo del sito se impostato, altrimenti il nome del sito.
         $logo_id  = (int) get_theme_mod( 'custom_logo' );
@@ -56,7 +157,7 @@ class Email {
             ? '<img src="' . esc_url( $logo_src ) . '" alt="' . esc_attr( get_bloginfo( 'name' ) ) . '" style="height:42px;width:auto;display:block">'
             : '<span style="font-weight:700;font-size:18px;color:' . esc_attr( $brand ) . '">' . esc_html( get_bloginfo( 'name' ) ) . '</span>';
 
-        $footer = apply_filters(
+        $footer = ! empty( $cfg['footer'] ) ? $cfg['footer'] : apply_filters(
             'gfoss_members_email_footer',
             "Associazione Italiana per l'Informazione Geografica Libera APS · Padova"
         );
@@ -79,14 +180,17 @@ class Email {
     // Triggered emails
 
     public static function candidatura_received( array $cand ): void {
-        $body = '<h2 style="margin-top:0">Domanda di iscrizione ricevuta</h2>'
-              . '<p>Ciao <strong>' . esc_html( $cand['nome'] ) . '</strong>,</p>'
-              . '<p>abbiamo ricevuto la tua domanda di iscrizione a GFOSS.it APS. Sarà esaminata dal Consiglio Direttivo (art. 6 dello Statuto) e diventerà effettiva dopo l\'approvazione e il pagamento della quota.</p>'
-              . '<p>Puoi versare la quota annuale di ' . esc_html( number_format_i18n( (float) ( defined( 'GFOSS_QUOTA_AMOUNT' ) ? GFOSS_QUOTA_AMOUNT : 30 ), 2 ) ) . ' € fin da subito:</p>'
-              . '<p><a href="' . esc_url( Candidatura::paypal_url( $cand ) ) . '" style="display:inline-block;background:#F39200;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600">Paga ora con PayPal</a></p>'
-              . '<p style="color:#4A5C6A">Oppure tramite bonifico — IBAN <code>' . esc_html( defined( 'GFOSS_ASSOC_IBAN' ) ? GFOSS_ASSOC_IBAN : '' ) . '</code>, beneficiario "Associazione Italiana per l\'Informazione Geografica Libera", causale "Nuova iscrizione anno ' . esc_html( gmdate( 'Y' ) ) . '".</p>'
-              . '<p>Ti ricontatteremo a breve. Grazie!</p>';
-        self::send( $cand['email'], '[GFOSS.it] Domanda di iscrizione ricevuta', $body );
+        $pay = Candidatura::paypal_url( $cand );
+        $r = self::render( 'candidatura_received', [
+            'nome'              => esc_html( $cand['nome'] ),
+            'cognome'           => esc_html( (string) ( $cand['cognome'] ?? '' ) ),
+            'importo'           => esc_html( number_format_i18n( (float) ( defined( 'GFOSS_QUOTA_AMOUNT' ) ? GFOSS_QUOTA_AMOUNT : 30 ), 2 ) ),
+            'anno'              => esc_html( gmdate( 'Y' ) ),
+            'iban'              => esc_html( defined( 'GFOSS_ASSOC_IBAN' ) ? GFOSS_ASSOC_IBAN : '' ),
+            'link_pagamento'    => esc_url( $pay ),
+            'bottone_pagamento' => self::button( $pay, 'Paga ora con PayPal' ),
+        ] );
+        self::send( $cand['email'], $r['subject'], $r['body'] );
     }
 
     public static function cd_new_candidatura( array $cand ): void {
@@ -105,50 +209,59 @@ class Email {
 
     public static function candidatura_approved_pay_now( array $cand ): void {
         if ( $cand['payment_status'] === 'paid' ) { return; }
-        $body = '<h2 style="margin-top:0">Domanda approvata 🎉</h2>'
-              . '<p>Ciao ' . esc_html( $cand['nome'] ) . ', il Consiglio Direttivo ha <strong>approvato</strong> la tua domanda.</p>'
-              . '<p>Per completare l\'iscrizione, versa la quota associativa annuale (' . esc_html( number_format_i18n( (float) ( defined( 'GFOSS_QUOTA_AMOUNT' ) ? GFOSS_QUOTA_AMOUNT : 30 ), 2 ) ) . ' €):</p>'
-              . '<p><a href="' . esc_url( Candidatura::paypal_url( $cand ) ) . '" style="background:#F39200;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600">Paga ora con PayPal</a></p>'
-              . '<p>Riceverai le credenziali per accedere all\'area soci appena risulterà il pagamento.</p>';
-        self::send( $cand['email'], '[GFOSS.it] La tua domanda è stata approvata — completa il pagamento', $body );
+        $pay = Candidatura::paypal_url( $cand );
+        $r = self::render( 'candidatura_approved_pay_now', [
+            'nome'              => esc_html( $cand['nome'] ),
+            'importo'           => esc_html( number_format_i18n( (float) ( defined( 'GFOSS_QUOTA_AMOUNT' ) ? GFOSS_QUOTA_AMOUNT : 30 ), 2 ) ),
+            'anno'              => esc_html( gmdate( 'Y' ) ),
+            'link_pagamento'    => esc_url( $pay ),
+            'bottone_pagamento' => self::button( $pay, 'Paga ora con PayPal' ),
+        ] );
+        self::send( $cand['email'], $r['subject'], $r['body'] );
     }
 
     public static function candidatura_rejected( array $cand ): void {
-        $body = '<h2 style="margin-top:0">Esito della tua domanda</h2>'
-              . '<p>Ciao ' . esc_html( $cand['nome'] ) . ', il Consiglio Direttivo ha esaminato la tua domanda.</p>'
-              . '<p>Purtroppo non è stato possibile accoglierla. Ai sensi dell\'art. 6 dello Statuto puoi richiedere che sull\'istanza si pronunci l\'Assemblea, scrivendo a <a href="mailto:info@gfoss.it">info@gfoss.it</a> entro 60 giorni.</p>'
-              . ( $cand['note_review'] ? '<p style="background:#FFF6E5;padding:10px;border-radius:6px"><strong>Motivazione:</strong><br>' . nl2br( esc_html( (string) $cand['note_review'] ) ) . '</p>' : '' );
-        self::send( $cand['email'], '[GFOSS.it] Esito della tua domanda di iscrizione', $body );
+        $motivo = $cand['note_review']
+            ? '<p style="background:#FFF6E5;padding:10px;border-radius:6px"><strong>Motivazione:</strong><br>' . nl2br( esc_html( (string) $cand['note_review'] ) ) . '</p>'
+            : '';
+        $r = self::render( 'candidatura_rejected', [
+            'nome'       => esc_html( $cand['nome'] ),
+            'cognome'    => esc_html( (string) ( $cand['cognome'] ?? '' ) ),
+            'motivo_box' => $motivo,
+        ] );
+        self::send( $cand['email'], $r['subject'], $r['body'] );
     }
 
     public static function quota_renewal_reminder( int $user_id, int $year, int $days_to_eoy ): void {
         $u = get_userdata( $user_id );
         if ( ! $u ) { return; }
-        $url = Rinnovo::paypal_url( $user_id, $year );
+        $url  = Rinnovo::paypal_url( $user_id, $year );
         $when = $days_to_eoy > 0
             ? "Mancano <strong>{$days_to_eoy} giorni</strong> alla scadenza del 31 dicembre."
             : 'La quota dell\'anno è ora <strong>scaduta</strong>: regolarizza al più presto per non perdere il diritto di voto in assemblea (art. 11 Statuto).';
-        $body = '<h2 style="margin-top:0">Promemoria quota associativa ' . esc_html( (string) $year ) . '</h2>'
-              . '<p>Ciao <strong>' . esc_html( $u->first_name ?: $u->display_name ) . '</strong>,</p>'
-              . '<p>' . $when . '</p>'
-              . '<p>Quota: <strong>' . esc_html( number_format_i18n( Quote::default_amount(), 2 ) ) . ' €</strong></p>'
-              . '<p><a href="' . esc_url( $url ) . '" style="background:#F39200;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600;display:inline-block">Rinnova ora con PayPal</a></p>'
-              . '<p style="color:#4A5C6A">Oppure bonifico — IBAN <code>' . esc_html( defined( 'GFOSS_ASSOC_IBAN' ) ? GFOSS_ASSOC_IBAN : '' ) . '</code>, causale "Rinnovo iscrizione anno ' . esc_html( (string) $year ) . '".</p>'
-              . '<p>Grazie per il tuo supporto al software libero geografico in Italia!</p>';
-        self::send( $u->user_email, '[GFOSS.it] Promemoria rinnovo quota ' . $year, $body );
+        $r = self::render( 'quota_renewal_reminder', [
+            'nome'              => esc_html( $u->first_name ?: $u->display_name ),
+            'anno'              => esc_html( (string) $year ),
+            'importo'           => esc_html( number_format_i18n( Quote::default_amount(), 2 ) ),
+            'iban'              => esc_html( defined( 'GFOSS_ASSOC_IBAN' ) ? GFOSS_ASSOC_IBAN : '' ),
+            'scadenza'          => $when,
+            'link_pagamento'    => esc_url( $url ),
+            'bottone_pagamento' => self::button( $url, 'Rinnova ora con PayPal' ),
+        ] );
+        self::send( $u->user_email, $r['subject'], $r['body'] );
     }
 
     public static function quota_last_call( int $user_id, int $year ): void {
         $u = get_userdata( $user_id );
         if ( ! $u ) { return; }
         $url = Rinnovo::paypal_url( $user_id, $year );
-        $body = '<h2 style="margin-top:0">Ultima chiamata: quota ' . esc_html( (string) $year ) . '</h2>'
-              . '<p>Ciao ' . esc_html( $u->first_name ?: $u->display_name ) . ',</p>'
-              . '<p>Risulta che non hai ancora rinnovato la quota associativa per l\'anno in corso. Senza il rinnovo, ai sensi dell\'<strong>art. 9</strong> dello Statuto la qualità di associato si perde per "<em>mancato pagamento della quota associativa entro i termini</em>".</p>'
-              . '<p>Se vuoi mantenere l\'iscrizione e tornare in regola:</p>'
-              . '<p><a href="' . esc_url( $url ) . '" style="background:#1A6FA0;color:#fff;text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:600">Rinnova ora con PayPal</a></p>'
-              . '<p style="color:#4A5C6A">Per qualsiasi problema scrivici a <a href="mailto:info@gfoss.it">info@gfoss.it</a>.</p>';
-        self::send( $u->user_email, '[GFOSS.it] Ultima chiamata — rinnovo quota ' . $year, $body );
+        $r = self::render( 'quota_last_call', [
+            'nome'              => esc_html( $u->first_name ?: $u->display_name ),
+            'anno'              => esc_html( (string) $year ),
+            'link_pagamento'    => esc_url( $url ),
+            'bottone_pagamento' => self::button( $url, 'Rinnova ora con PayPal', '#1A6FA0' ),
+        ] );
+        self::send( $u->user_email, $r['subject'], $r['body'] );
     }
 
     public static function admin_quota_summary( int $year, array $unpaid ): void {
@@ -175,13 +288,13 @@ class Email {
         $u = get_userdata( $user_id );
         if ( ! $u ) { return; }
         $area = home_url( '/area-soci/' );
-        $body = '<h2 style="margin-top:0">Benvenuto/a in GFOSS.it APS 🌍</h2>'
-              . '<p>Ciao <strong>' . esc_html( $u->display_name ) . '</strong>, la tua iscrizione è ora <strong>effettiva</strong>.</p>'
-              . '<p>Numero socio: <code>' . esc_html( (string) get_user_meta( $user_id, 'gf_numero_socio', true ) ) . '</code></p>'
-              . '<p>Riceverai un\'email separata da WordPress per impostare la tua password. Una volta fatto, accedi all\'area riservata:</p>'
-              . '<p><a href="' . esc_url( $area ) . '" style="background:#1A6FA0;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-weight:600">Apri area soci</a></p>'
-              . '<p>Da lì potrai scaricare la <strong>tessera digitale</strong>, vedere lo storico quote, iscriverti agli eventi e accedere ai documenti riservati ai soci.</p>'
-              . '<p>Grazie per supportare il software libero geografico in Italia!</p>';
-        self::send( $u->user_email, '[GFOSS.it] Benvenuto/a — la tua iscrizione è effettiva', $body );
+        $r = self::render( 'candidatura_welcome', [
+            'nome'         => esc_html( $u->display_name ),
+            'numero_socio' => esc_html( (string) get_user_meta( $user_id, 'gf_numero_socio', true ) ),
+            'anno'         => esc_html( gmdate( 'Y' ) ),
+            'link_area'    => esc_url( $area ),
+            'bottone_area' => self::button( $area, 'Apri area soci', '#1A6FA0' ),
+        ] );
+        self::send( $u->user_email, $r['subject'], $r['body'] );
     }
 }
