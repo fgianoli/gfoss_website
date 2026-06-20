@@ -58,6 +58,7 @@ class Movement {
             'quota_id'       => ! empty( $d['quota_id'] ) ? (int) $d['quota_id'] : null,
             'documento_url'  => isset( $d['documento_url'] ) ? esc_url_raw( (string) $d['documento_url'] ) : null,
             'metodo'         => isset( $d['metodo'] ) ? sanitize_text_field( (string) $d['metodo'] ) : null,
+            'fin_5x1000'     => ! empty( $d['fin_5x1000'] ) ? 1 : 0,
             'note'           => isset( $d['note'] ) ? sanitize_textarea_field( (string) $d['note'] ) : null,
         ];
     }
@@ -79,6 +80,24 @@ class Movement {
         $tot  = (int) $wpdb->get_var( $args ? $wpdb->prepare( $cnt_sql, $args ) : $cnt_sql );
 
         return [ 'rows' => $rows, 'total_count' => $tot ];
+    }
+
+    public static function exists_for_quota( int $quota_id ): bool {
+        global $wpdb;
+        return (bool) $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM " . Schema::table_movement() . " WHERE quota_id = %d", $quota_id
+        ) );
+    }
+
+    /** Spese finanziate dal 5×1000 in un anno (rows). */
+    public static function spese_5x1000( int $year ): array {
+        global $wpdb;
+        return $wpdb->get_results( $wpdb->prepare(
+            "SELECT * FROM " . Schema::table_movement() . "
+             WHERE tipo = 'uscita' AND fin_5x1000 = 1 AND YEAR(data) = %d
+             ORDER BY data ASC",
+            $year
+        ), ARRAY_A ) ?: [];
     }
 
     public static function totals_year( int $year ): array {

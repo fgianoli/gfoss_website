@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 class Schema {
 
-    public const DB_VERSION = '1';
+    public const DB_VERSION = '2';
 
     public static function table_movement(): string { global $wpdb; return $wpdb->prefix . 'gfoss_movement'; }
     public static function table_category(): string { global $wpdb; return $wpdb->prefix . 'gfoss_acc_cat'; }
@@ -44,6 +44,7 @@ class Schema {
             quota_id BIGINT UNSIGNED NULL DEFAULT NULL,
             documento_url VARCHAR(255) NULL DEFAULT NULL,
             metodo VARCHAR(32) NULL DEFAULT NULL,
+            fin_5x1000 TINYINT(1) NOT NULL DEFAULT 0,
             note TEXT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             created_by BIGINT UNSIGNED NULL DEFAULT NULL,

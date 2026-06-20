@@ -6,9 +6,10 @@ $id   = (int) ( $_GET['id'] ?? 0 );
 $mov  = $id ? Movement::get( $id ) : [
     'data' => gmdate( 'Y-m-d' ), 'tipo' => 'entrata', 'categoria_slug' => '',
     'importo' => 0, 'descrizione' => '', 'metodo' => '', 'note' => '',
-    'socio_id' => null, 'quota_id' => null, 'documento_url' => '',
+    'socio_id' => null, 'quota_id' => null, 'documento_url' => '', 'fin_5x1000' => 0,
 ];
 $cats = Movement::categories();
+wp_enqueue_media();
 ?>
 <div class="wrap">
     <h1><?php echo $id ? 'Modifica movimento' : 'Aggiungi movimento'; ?></h1>
@@ -59,8 +60,16 @@ $cats = Movement::categories();
                 </td>
             </tr>
             <tr>
-                <th><label for="documento_url">URL documento (ricevuta, fattura)</label></th>
-                <td><input type="url" name="documento_url" id="documento_url" class="regular-text" value="<?php echo esc_attr( (string) $mov['documento_url'] ); ?>"></td>
+                <th><label for="documento_url">Documento (ricevuta, fattura)</label></th>
+                <td>
+                    <input type="url" name="documento_url" id="documento_url" class="regular-text" value="<?php echo esc_attr( (string) $mov['documento_url'] ); ?>" placeholder="https://…">
+                    <button type="button" class="button" id="gfoss-acc-pick">Allega dalla Media Library</button>
+                    <span id="gfoss-acc-file"><?php if ( ! empty( $mov['documento_url'] ) ) : ?> <a href="<?php echo esc_url( $mov['documento_url'] ); ?>" target="_blank">apri allegato</a><?php endif; ?></span>
+                </td>
+            </tr>
+            <tr>
+                <th>5×1000</th>
+                <td><label><input type="checkbox" name="fin_5x1000" value="1" <?php checked( (int) ( $mov['fin_5x1000'] ?? 0 ), 1 ); ?>> Spesa finanziata dal 5×1000 <span class="description">(per il rendiconto del 5×1000)</span></label></td>
             </tr>
             <tr>
                 <th><label for="note">Note</label></th>
@@ -73,4 +82,19 @@ $cats = Movement::categories();
             <a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=gfoss-movimenti' ) ); ?>">Annulla</a>
         </p>
     </form>
+    <script>
+    (function(){
+        var b = document.getElementById('gfoss-acc-pick');
+        if (!b || !window.wp || !wp.media) return;
+        b.addEventListener('click', function(e){
+            e.preventDefault();
+            var f = wp.media({ title:'Scegli ricevuta/fattura', multiple:false }).on('select', function(){
+                var att = f.state().get('selection').first().toJSON();
+                document.getElementById('documento_url').value = att.url;
+                document.getElementById('gfoss-acc-file').innerHTML = ' <a href="'+att.url+'" target="_blank">apri allegato</a>';
+            });
+            f.open();
+        });
+    })();
+    </script>
 </div>
