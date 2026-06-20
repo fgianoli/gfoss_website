@@ -46,6 +46,7 @@ class Roles {
         self::upsert_role( 'gfoss_tesoriere',     __( 'Tesoriere',    'gfoss-members' ),   $caps_tesoriere );
         self::upsert_role( 'gfoss_revisore',      __( 'Revisore',     'gfoss-members' ),   $caps_revisore );
         self::upsert_role( 'gfoss_comunicazione', __( 'Comunicazione', 'gfoss-members' ),  $caps_comunicazione );
+        self::upsert_role( 'gfoss_archiviato',    __( 'Socio archiviato', 'gfoss-members' ), [ 'read' => true ] );
 
         // Administrator ottiene tutto.
         $admin = get_role( 'administrator' );

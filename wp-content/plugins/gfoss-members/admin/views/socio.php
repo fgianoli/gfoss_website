@@ -34,6 +34,18 @@ if ( ! empty( $_POST['_action'] ) && current_user_can( Roles::CAP_MANAGE_SOCI ) 
         Quote::mark_unpaid( $uid, (int) ( $_POST['anno'] ?? gmdate( 'Y' ) ) );
         wp_safe_redirect( add_query_arg( 'msg', 'unpaid', wp_get_referer() ) ); exit;
     }
+    if ( $action === 'archive' ) {
+        Archivio::archive( $uid );
+        wp_safe_redirect( add_query_arg( 'msg', 'archived', wp_get_referer() ) ); exit;
+    }
+    if ( $action === 'reactivate' ) {
+        Archivio::reactivate( $uid );
+        wp_safe_redirect( add_query_arg( 'msg', 'reactivated', wp_get_referer() ) ); exit;
+    }
+    if ( $action === 'delete_all' && current_user_can( 'delete_users' ) ) {
+        Archivio::delete_with_data( $uid );
+        wp_safe_redirect( add_query_arg( 'msg', 'deleted', admin_url( 'admin.php?page=gfoss-soci' ) ) ); exit;
+    }
 }
 
 $msg     = sanitize_key( (string) ( $_GET['msg'] ?? '' ) );
@@ -59,7 +71,7 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
     </h1>
 
     <?php
-    $notes = [ 'saved' => 'Dati salvati.', 'paid' => 'Quota segnata come pagata.', 'unpaid' => 'Quota segnata come non pagata.' ];
+    $notes = [ 'saved' => 'Dati salvati.', 'paid' => 'Quota segnata come pagata.', 'unpaid' => 'Quota segnata come non pagata.', 'archived' => 'Socio archiviato.', 'reactivated' => 'Socio riabilitato.' ];
     if ( isset( $notes[ $msg ] ) ) {
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $notes[ $msg ] ) . '</p></div>';
     }
@@ -135,5 +147,37 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <!-- STATO / ARCHIVIAZIONE -->
+    <div class="card" style="<?php echo $card; ?>;margin-top:24px;max-width:760px">
+        <h2 style="margin-top:0">Stato e archiviazione</h2>
+        <?php if ( Archivio::is_archived( $uid ) ) : ?>
+            <p>Socio <strong>archiviato</strong> il <?php echo esc_html( (string) get_user_meta( $uid, Archivio::META_DATE, true ) ); ?>.</p>
+            <form method="post" style="display:inline">
+                <?php wp_nonce_field( 'gfoss_socio_' . $uid ); ?>
+                <input type="hidden" name="_action" value="reactivate">
+                <button type="submit" class="button button-primary">Riabilita socio</button>
+            </form>
+        <?php else : ?>
+            <?php if ( Archivio::is_lapsed( $uid ) ) : ?>
+                <p class="description" style="color:#B26A00"><strong>Risulta decaduto</strong>: quota non rinnovata entro i termini (fine marzo dell'anno successivo all'ultima quota).</p>
+            <?php endif; ?>
+            <form method="post" style="display:inline">
+                <?php wp_nonce_field( 'gfoss_socio_' . $uid ); ?>
+                <input type="hidden" name="_action" value="archive">
+                <button type="submit" class="button" onclick="return confirm('Archiviare questo socio? Uscirà dal registro attivo ma potrai riabilitarlo.')">Archivia socio</button>
+            </form>
+        <?php endif; ?>
+
+        <?php if ( current_user_can( 'delete_users' ) ) : ?>
+            <hr style="margin:18px 0">
+            <p style="color:#C0392B"><strong>Zona pericolosa</strong> — elimina l'utente e <strong>tutti i suoi dati</strong> (anagrafica, quote, candidature). Operazione irreversibile (GDPR). Le eventuali news pubblicate vengono riassegnate a un amministratore.</p>
+            <form method="post" style="display:inline">
+                <?php wp_nonce_field( 'gfoss_socio_' . $uid ); ?>
+                <input type="hidden" name="_action" value="delete_all">
+                <button type="submit" class="button" style="border-color:#C0392B;color:#C0392B" onclick="return confirm('ELIMINARE definitivamente <?php echo esc_attr( $u->display_name ); ?> e tutti i suoi dati? Non si può annullare.')">Elimina definitivamente</button>
+            </form>
+        <?php endif; ?>
     </div>
 </div>
