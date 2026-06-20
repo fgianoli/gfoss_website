@@ -87,5 +87,9 @@ function gfoss_members_quota_status( int $user_id, ?int $year = null ): string {
 
 function gfoss_members_is_socio( int $user_id ): bool {
     $u = get_userdata( $user_id );
-    return $u && in_array( 'gfoss_socio', (array) $u->roles, true );
+    if ( ! $u ) { return false; }
+    // Tutte le cariche del direttivo sono soci a tutti gli effetti (ruoli cumulabili,
+    // ma anche se assegnato il solo ruolo di carica deve valere come socio).
+    $member_roles = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione' ];
+    return (bool) array_intersect( $member_roles, (array) $u->roles );
 }
