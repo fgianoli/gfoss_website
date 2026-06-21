@@ -482,6 +482,15 @@ gfoss_seed_page( 'convocazioni', 'Convocazioni assemblea', $area_id, <<<HTML
 HTML
 , 4 );
 
+// 12b. Sondaggi (riservata ai soci)
+gfoss_seed_page( 'sondaggi', 'Sondaggi', $area_id, <<<HTML
+<!-- wp:paragraph --><p>Sondaggi informali tra i soci. Un voto a testa; i risultati sono anonimi. (Diverso dal voto d'assemblea statutario.)</p><!-- /wp:paragraph -->
+<!-- wp:shortcode -->
+[gfoss_sondaggi]
+<!-- /wp:shortcode -->
+HTML
+, 6 );
+
 // 13. Mappa soci (riservata, opt-in)
 gfoss_seed_page( 'mappa-soci', 'Mappa dei soci', $area_id, <<<HTML
 <!-- wp:paragraph --><p>I soci che hanno attivato «Localizzami in mappa» nel proprio profilo. Attiva l'opzione dalla tua <a href="/area-soci/">area personale</a> per comparire.</p><!-- /wp:paragraph -->

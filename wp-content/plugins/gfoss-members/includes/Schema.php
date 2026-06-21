@@ -22,6 +22,7 @@ class Schema {
     public static function table_quote(): string       { global $wpdb; return $wpdb->prefix . 'gfoss_quote'; }
     public static function table_candidatura(): string { global $wpdb; return $wpdb->prefix . 'gfoss_candidatura'; }
     public static function table_donazioni(): string   { global $wpdb; return $wpdb->prefix . 'gfoss_donazioni'; }
+    public static function table_voti(): string        { global $wpdb; return $wpdb->prefix . 'gfoss_sondaggio_voti'; }
 
     public static function maybe_upgrade(): void {
         if ( get_option( 'gfoss_members_db_version' ) !== GFOSS_MEMBERS_DB_VER ) {
@@ -121,9 +122,22 @@ class Schema {
             KEY transaction_ref (transaction_ref)
         ) $charset;";
 
+        $t_voti = self::table_voti();
+        $sql_voti = "CREATE TABLE $t_voti (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            sondaggio_id BIGINT UNSIGNED NOT NULL,
+            user_id BIGINT UNSIGNED NOT NULL,
+            opzione SMALLINT UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uniq_vote (sondaggio_id, user_id),
+            KEY sondaggio_id (sondaggio_id)
+        ) $charset;";
+
         dbDelta( $sql_quote );
         dbDelta( $sql_cand );
         dbDelta( $sql_don );
+        dbDelta( $sql_voti );
 
         update_option( 'gfoss_members_db_version', GFOSS_MEMBERS_DB_VER, false );
     }

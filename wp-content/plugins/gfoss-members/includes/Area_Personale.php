@@ -28,7 +28,7 @@ class Area_Personale {
         $shortcodes = [
             'gfoss_area_personale', 'gfoss_iscrizione_form', 'gfoss_verifica_tessera',
             'gfoss_eventi', 'gfoss_materiali', 'gfoss_mappa_soci', 'gfoss_convocazioni',
-            'gfoss_documenti_riservati', 'gfoss_progetti',
+            'gfoss_documenti_riservati', 'gfoss_progetti', 'gfoss_sondaggi',
         ];
         foreach ( $shortcodes as $sc ) {
             if ( has_shortcode( $post->post_content, $sc ) ) {
@@ -172,6 +172,7 @@ class Area_Personale {
                     'materiali-soci' => [ 'Materiali e risorse', 'Presentazioni, template, documentazione condivisa.' ],
                     'convocazioni'   => [ 'Convocazioni e deleghe', 'Assemblee convocate e gestione delle deleghe.' ],
                     'mappa-soci'     => [ 'Mappa dei soci', 'La community sulla mappa (attiva il consenso nei tuoi dati).' ],
+                    'sondaggi'       => [ 'Sondaggi', 'Esprimi la tua opinione nei sondaggi tra soci.' ],
                 ];
                 foreach ( $servizi as $slug => $info ) :
                     $pgs = get_posts( [ 'post_type' => 'page', 'name' => $slug, 'post_status' => 'publish', 'numberposts' => 1 ] );
@@ -183,6 +184,14 @@ class Area_Personale {
                         <p class="gf-muted"><?php echo esc_html( $info[1] ); ?></p>
                     </section>
                 <?php endforeach; ?>
+
+                <?php if ( class_exists( __NAMESPACE__ . '\\Forum' ) && Forum::is_active() ) : ?>
+                <section class="gf-area__card">
+                    <header class="gf-area__card-head"><h2>Forum soci</h2></header>
+                    <p><a class="gf-btn gf-btn--ghost" href="<?php echo esc_url( home_url( '/forums/' ) ); ?>">Apri il forum →</a></p>
+                    <p class="gf-muted">Spazio di discussione riservato ai soci.</p>
+                </section>
+                <?php endif; ?>
 
                 <!-- DATI PERSONALI ------------------------------------ -->
                 <section class="gf-area__card gf-area__card--wide">
