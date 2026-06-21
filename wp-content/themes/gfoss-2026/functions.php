@@ -207,10 +207,10 @@ add_action( 'admin_bar_menu', function ( $bar ) {
 }, 999 );
 
 /* -------------------------------------------------------------------------
- * Editor classico ovunque: News, Pagine e contenuti custom (Eventi, Progetti…)
- * usano lo stesso editor, così l'esperienza è uniforme per il direttivo.
+ * Editor: gestito dal plugin "Classic Editor" (default Classico, con possibilità
+ * per l'utente di passare a Gutenberg sulla singola News/pagina). Non forziamo
+ * più via codice, così resta la libertà di scelta per-contenuto.
  * ---------------------------------------------------------------------- */
-add_filter( 'use_block_editor_for_post_type', '__return_false', 100 );
 
 /* -------------------------------------------------------------------------
  * PWA — installabile su mobile (manifest + service worker root-scoped).
