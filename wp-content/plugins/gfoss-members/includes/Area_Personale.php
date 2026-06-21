@@ -19,10 +19,16 @@ class Area_Personale {
         if ( ! is_singular() ) { return; }
         global $post;
         if ( ! $post ) { return; }
+        // Sul singolo progetto la pagina è renderizzata via the_content (no shortcode).
+        if ( is_singular( 'gfoss_progetto' ) ) {
+            wp_enqueue_style( 'gfoss-members-form', GFOSS_MEMBERS_URL . 'assets/css/form.css', [], GFOSS_MEMBERS_VERSION );
+            wp_enqueue_style( 'gfoss-members-area', GFOSS_MEMBERS_URL . 'assets/css/area.css', [ 'gfoss-members-form' ], GFOSS_MEMBERS_VERSION );
+            return;
+        }
         $shortcodes = [
             'gfoss_area_personale', 'gfoss_iscrizione_form', 'gfoss_verifica_tessera',
             'gfoss_eventi', 'gfoss_materiali', 'gfoss_mappa_soci', 'gfoss_convocazioni',
-            'gfoss_documenti_riservati',
+            'gfoss_documenti_riservati', 'gfoss_progetti',
         ];
         foreach ( $shortcodes as $sc ) {
             if ( has_shortcode( $post->post_content, $sc ) ) {

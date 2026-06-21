@@ -13,6 +13,21 @@ class Hooks {
 
     public static function init(): void {
         add_action( 'gfoss_members_quota_paid', [ __CLASS__, 'on_quota_paid' ], 10, 5 );
+        add_action( 'gfoss_members_donazione_paid', [ __CLASS__, 'on_donazione_paid' ], 10, 5 );
+    }
+
+    /** Ogni donazione confermata diventa un'entrata in categoria "Raccolta fondi". */
+    public static function on_donazione_paid( int $don_id, int $progetto_id, float $importo, string $metodo, ?string $txn ): void {
+        $title = get_the_title( $progetto_id ) ?: ( 'Progetto #' . $progetto_id );
+        Movement::create( [
+            'data'           => current_time( 'Y-m-d', true ),
+            'tipo'           => 'entrata',
+            'categoria_slug' => 'raccolta_fondi',
+            'importo'        => $importo,
+            'descrizione'    => 'Donazione — ' . $title,
+            'metodo'         => $metodo,
+            'note'           => ( $txn ? "txn: {$txn} · " : '' ) . 'donazione #' . $don_id,
+        ] );
     }
 
     public static function on_quota_paid( int $quota_id, int $user_id, int $anno, string $metodo, ?string $txn ): void {

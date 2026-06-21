@@ -21,6 +21,7 @@ class Schema {
 
     public static function table_quote(): string       { global $wpdb; return $wpdb->prefix . 'gfoss_quote'; }
     public static function table_candidatura(): string { global $wpdb; return $wpdb->prefix . 'gfoss_candidatura'; }
+    public static function table_donazioni(): string   { global $wpdb; return $wpdb->prefix . 'gfoss_donazioni'; }
 
     public static function maybe_upgrade(): void {
         if ( get_option( 'gfoss_members_db_version' ) !== GFOSS_MEMBERS_DB_VER ) {
@@ -97,8 +98,32 @@ class Schema {
             KEY payment_txn_ref (payment_txn_ref)
         ) $charset;";
 
+        $t_don = self::table_donazioni();
+        $sql_don = "CREATE TABLE $t_don (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            progetto_id BIGINT UNSIGNED NOT NULL,
+            token VARCHAR(64) NOT NULL DEFAULT '',
+            importo DECIMAL(10,2) NOT NULL DEFAULT 0,
+            metodo VARCHAR(32) NOT NULL DEFAULT 'paypal',
+            stato VARCHAR(16) NOT NULL DEFAULT 'pending',
+            donatore_nome VARCHAR(160) NULL DEFAULT NULL,
+            donatore_email VARCHAR(190) NULL DEFAULT NULL,
+            mostra_nome TINYINT(1) NOT NULL DEFAULT 0,
+            consenso_privacy TINYINT(1) NOT NULL DEFAULT 0,
+            messaggio VARCHAR(255) NULL DEFAULT NULL,
+            transaction_ref VARCHAR(190) NULL DEFAULT NULL,
+            data_pagamento DATE NULL DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY progetto_id (progetto_id),
+            KEY stato (stato),
+            KEY token (token),
+            KEY transaction_ref (transaction_ref)
+        ) $charset;";
+
         dbDelta( $sql_quote );
         dbDelta( $sql_cand );
+        dbDelta( $sql_don );
 
         update_option( 'gfoss_members_db_version', GFOSS_MEMBERS_DB_VER, false );
     }

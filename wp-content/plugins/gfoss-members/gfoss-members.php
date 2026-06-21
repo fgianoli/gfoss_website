@@ -14,11 +14,11 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_MEMBERS_VERSION',  '1.4.0' );
+define( 'GFOSS_MEMBERS_VERSION',  '1.5.0' );
 define( 'GFOSS_MEMBERS_FILE',     __FILE__ );
 define( 'GFOSS_MEMBERS_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'GFOSS_MEMBERS_URL',      plugin_dir_url( __FILE__ ) );
-define( 'GFOSS_MEMBERS_DB_VER',   '2' ); // bump to trigger dbDelta on next load
+define( 'GFOSS_MEMBERS_DB_VER',   '3' ); // bump to trigger dbDelta on next load
 
 /** Minimal PSR-4-ish autoloader for our classes. */
 spl_autoload_register( static function ( $class ) {
@@ -57,6 +57,7 @@ add_action( 'plugins_loaded', static function () {
     \GFOSS_Members\Materiali::init();
     \GFOSS_Members\Mappa_Soci::init();
     \GFOSS_Members\Convocazioni::init();
+    \GFOSS_Members\Progetti::init();
     \GFOSS_Members\Newsletter::init();
 
     if ( is_admin() ) {

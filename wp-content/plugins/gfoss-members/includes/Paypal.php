@@ -76,13 +76,20 @@ class Paypal {
             return new \WP_REST_Response( 'ignored', 200 );
         }
 
-        // Anti-frode: l'importo deve coprire almeno la quota attesa.
-        // Il flusso /donate consente all'utente di modificare l'importo: senza questo
-        // controllo si potrebbe attivare l'iscrizione pagando pochi centesimi.
-        $expected_amount = Quote::default_amount();
-        if ( $amount + 0.001 < $expected_amount ) {
-            self::log( "IPN rejected: importo $amount < quota $expected_amount", $data );
-            return new \WP_REST_Response( 'ignored', 200 );
+        // Anti-frode importo: per le QUOTE deve coprire almeno la quota attesa
+        // (il flusso /donate consente di modificare l'importo). Le DONAZIONI sono
+        // invece a importo libero (custom = dona_…), basta che sia > 0.
+        if ( str_starts_with( $custom, 'dona_' ) ) {
+            if ( $amount <= 0 ) {
+                self::log( "IPN rejected: donazione importo $amount", $data );
+                return new \WP_REST_Response( 'ignored', 200 );
+            }
+        } else {
+            $expected_amount = Quote::default_amount();
+            if ( $amount + 0.001 < $expected_amount ) {
+                self::log( "IPN rejected: importo $amount < quota $expected_amount", $data );
+                return new \WP_REST_Response( 'ignored', 200 );
+            }
         }
 
         // Idempotenza: ignora replay dello stesso txn_id.
@@ -115,6 +122,19 @@ class Paypal {
                     return new \WP_REST_Response( 'ok', 200 );
                 }
             }
+        }
+
+        // custom = "dona_<token>" → donazione a un progetto (crowdfunding)
+        if ( str_starts_with( $custom, 'dona_' ) ) {
+            $token = substr( $custom, 5 );
+            $don   = Donazioni::find_by_token( $token );
+            if ( ! $don ) {
+                self::log( 'IPN: donazione token not found', $data );
+                return new \WP_REST_Response( 'not-found', 200 );
+            }
+            Donazioni::mark_paid( (int) $don['id'], $amount, 'paypal', $txn_id );
+            self::log( 'IPN: donazione paid', [ 'don_id' => $don['id'], 'amount' => $amount ] );
+            return new \WP_REST_Response( 'ok', 200 );
         }
 
         self::log( 'IPN: unknown custom', $data );

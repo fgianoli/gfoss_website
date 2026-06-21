@@ -455,6 +455,15 @@ gfoss_seed_page( 'eventi', 'Eventi', 0, <<<HTML
 HTML
 , 0 );
 
+// 10b. Progetti / crowdfunding (pubblica)
+gfoss_seed_page( 'progetti', 'Progetti', 0, <<<HTML
+<!-- wp:paragraph --><p>Sostieni i progetti di GFOSS.it APS: campagne di raccolta fondi per il software geografico libero e le comunità open source. Le donazioni sono acquisite dall'associazione (art. 7 D.Lgs. 117/2017).</p><!-- /wp:paragraph -->
+<!-- wp:shortcode -->
+[gfoss_progetti]
+<!-- /wp:shortcode -->
+HTML
+, 0 );
+
 // 11. Materiali soci (riservata)
 gfoss_seed_page( 'materiali-soci', 'Materiali e risorse', $area_id, <<<HTML
 <!-- wp:paragraph --><p>Presentazioni, template, kit di comunicazione e documentazione condivisa con i soci.</p><!-- /wp:paragraph -->
@@ -541,6 +550,7 @@ $pages = [
     [ 'title' => 'Associazione',  'page' => $assoc_id, 'children_of' => $assoc_id ],
     [ 'title' => 'News',          'page' => $news_id ?: 0, 'url' => $news_id ? '' : home_url( '/blog/' ) ],
     [ 'title' => 'Eventi',        'page' => 0, 'url' => home_url( '/eventi/' ) ],
+    [ 'title' => 'Progetti',      'page' => 0, 'url' => home_url( '/progetti/' ) ],
     [ 'title' => 'Iscriviti',     'page' => 0, 'url' => home_url( '/associazione/iscrizioni-rinnovi/' ) ],
     [ 'title' => 'Area soci',     'page' => 0, 'url' => home_url( '/area-soci/' ) ],
 ];
@@ -604,5 +614,8 @@ if ( ! (int) get_option( 'site_icon' ) && is_file( $theme_img . 'favicon.png' ) 
     $fid = gfoss_seed_media( $theme_img . 'favicon.png', 'Favicon GFOSS.it' );
     if ( $fid ) { update_option( 'site_icon', $fid ); WP_CLI::log( '  ✓ favicon impostata' ); }
 }
+
+// Rigenera le regole di rewrite (necessario per i CPT con URL propri, es. progetti).
+flush_rewrite_rules( false );
 
 WP_CLI::success( 'Seed completato. Visita il sito.' );
