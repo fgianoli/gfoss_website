@@ -207,6 +207,12 @@ add_action( 'admin_bar_menu', function ( $bar ) {
 }, 999 );
 
 /* -------------------------------------------------------------------------
+ * Editor classico ovunque: News, Pagine e contenuti custom (Eventi, Progetti…)
+ * usano lo stesso editor, così l'esperienza è uniforme per il direttivo.
+ * ---------------------------------------------------------------------- */
+add_filter( 'use_block_editor_for_post_type', '__return_false', 100 );
+
+/* -------------------------------------------------------------------------
  * PWA — installabile su mobile (manifest + service worker root-scoped).
  * sw.js e il manifest sono serviti da PHP alla radice del sito così il
  * service worker ha scope "/" e controlla tutto il sito.
