@@ -53,25 +53,39 @@ class Eventi {
     }
 
     public static function metabox(): void {
-        add_meta_box( 'gfoss_evento_meta', 'Dettagli evento', [ __CLASS__, 'render_metabox' ], self::CPT, 'side', 'high' );
+        // 'normal' + 'high' → riquadro ben visibile sotto il titolo/editor.
+        add_meta_box( 'gfoss_evento_meta', 'Dettagli evento', [ __CLASS__, 'render_metabox' ], self::CPT, 'normal', 'high' );
         add_meta_box( 'gfoss_evento_iscritti', 'Iscritti', [ __CLASS__, 'render_iscritti' ], self::CPT, 'normal', 'default' );
     }
 
     public static function render_metabox( \WP_Post $post ): void {
         $data    = (string) get_post_meta( $post->ID, '_gf_ev_data', true );
+        $fine    = (string) get_post_meta( $post->ID, '_gf_ev_data_fine', true );
         $luogo   = (string) get_post_meta( $post->ID, '_gf_ev_luogo', true );
+        $indir   = (string) get_post_meta( $post->ID, '_gf_ev_indirizzo', true );
+        $url     = (string) get_post_meta( $post->ID, '_gf_ev_url', true );
         $scad    = (string) get_post_meta( $post->ID, '_gf_ev_scadenza', true );
         $posti   = (string) get_post_meta( $post->ID, '_gf_ev_posti', true );
         wp_nonce_field( 'gfoss_evento_meta_' . $post->ID, '_gfoss_evento_nonce' );
         ?>
-        <p><label><strong>Data e ora</strong></label><br>
-            <input type="datetime-local" name="gf_ev_data" value="<?php echo esc_attr( $data ); ?>" class="widefat"></p>
-        <p><label><strong>Luogo</strong></label><br>
-            <input type="text" name="gf_ev_luogo" value="<?php echo esc_attr( $luogo ); ?>" class="widefat" placeholder="es. Padova / Online"></p>
-        <p><label><strong>Scadenza iscrizioni</strong></label><br>
-            <input type="date" name="gf_ev_scadenza" value="<?php echo esc_attr( $scad ); ?>" class="widefat"></p>
-        <p><label><strong>Posti (0 = illimitati)</strong></label><br>
-            <input type="number" name="gf_ev_posti" value="<?php echo esc_attr( $posti ); ?>" class="widefat" min="0"></p>
+        <p class="description" style="margin:0 0 12px">Compila questi campi: appariranno in modo uniforme nella pagina <strong>Eventi</strong>. Il <em>titolo</em> e la <em>descrizione</em> sono qui sopra.</p>
+        <style>.gf-ev-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:760px}.gf-ev-grid label{font-weight:600;display:block;margin-bottom:4px}.gf-ev-grid .full{grid-column:1 / -1}</style>
+        <div class="gf-ev-grid">
+            <p><label>Inizio (data e ora)</label>
+                <input type="datetime-local" name="gf_ev_data" value="<?php echo esc_attr( $data ); ?>" class="widefat"></p>
+            <p><label>Fine <small>(facoltativa)</small></label>
+                <input type="datetime-local" name="gf_ev_data_fine" value="<?php echo esc_attr( $fine ); ?>" class="widefat"></p>
+            <p><label>Luogo</label>
+                <input type="text" name="gf_ev_luogo" value="<?php echo esc_attr( $luogo ); ?>" class="widefat" placeholder="es. Università di Trento / Online"></p>
+            <p><label>Indirizzo <small>(facoltativo)</small></label>
+                <input type="text" name="gf_ev_indirizzo" value="<?php echo esc_attr( $indir ); ?>" class="widefat" placeholder="via, città"></p>
+            <p><label>Scadenza iscrizioni</label>
+                <input type="date" name="gf_ev_scadenza" value="<?php echo esc_attr( $scad ); ?>" class="widefat"></p>
+            <p><label>Posti <small>(0 = illimitati)</small></label>
+                <input type="number" name="gf_ev_posti" value="<?php echo esc_attr( $posti ); ?>" class="widefat" min="0"></p>
+            <p class="full"><label>Link esterno <small>(sito dell'evento, facoltativo)</small></label>
+                <input type="url" name="gf_ev_url" value="<?php echo esc_attr( $url ); ?>" class="widefat" placeholder="https://2026.foss4g.it/"></p>
+        </div>
         <?php
     }
 
@@ -90,10 +104,28 @@ class Eventi {
         if ( ! isset( $_POST['_gfoss_evento_nonce'] )
              || ! wp_verify_nonce( $_POST['_gfoss_evento_nonce'], 'gfoss_evento_meta_' . $post_id ) ) { return; }
         if ( ! current_user_can( Roles::CAP_MANAGE_SOCI ) ) { return; }
-        update_post_meta( $post_id, '_gf_ev_data',     sanitize_text_field( wp_unslash( $_POST['gf_ev_data'] ?? '' ) ) );
-        update_post_meta( $post_id, '_gf_ev_luogo',    sanitize_text_field( wp_unslash( $_POST['gf_ev_luogo'] ?? '' ) ) );
-        update_post_meta( $post_id, '_gf_ev_scadenza', sanitize_text_field( wp_unslash( $_POST['gf_ev_scadenza'] ?? '' ) ) );
-        update_post_meta( $post_id, '_gf_ev_posti',    (int) ( $_POST['gf_ev_posti'] ?? 0 ) );
+        update_post_meta( $post_id, '_gf_ev_data',      sanitize_text_field( wp_unslash( $_POST['gf_ev_data'] ?? '' ) ) );
+        update_post_meta( $post_id, '_gf_ev_data_fine', sanitize_text_field( wp_unslash( $_POST['gf_ev_data_fine'] ?? '' ) ) );
+        update_post_meta( $post_id, '_gf_ev_luogo',     sanitize_text_field( wp_unslash( $_POST['gf_ev_luogo'] ?? '' ) ) );
+        update_post_meta( $post_id, '_gf_ev_indirizzo', sanitize_text_field( wp_unslash( $_POST['gf_ev_indirizzo'] ?? '' ) ) );
+        update_post_meta( $post_id, '_gf_ev_url',       esc_url_raw( wp_unslash( $_POST['gf_ev_url'] ?? '' ) ) );
+        update_post_meta( $post_id, '_gf_ev_scadenza',  sanitize_text_field( wp_unslash( $_POST['gf_ev_scadenza'] ?? '' ) ) );
+        update_post_meta( $post_id, '_gf_ev_posti',     (int) ( $_POST['gf_ev_posti'] ?? 0 ) );
+    }
+
+    /** Intervallo date leggibile: singolo giorno, multi-giorno o con orario. */
+    private static function format_date( string $start, string $end ): string {
+        if ( ! $start ) { return ''; }
+        $ts = strtotime( $start );
+        $te = $end ? strtotime( $end ) : 0;
+        $same_day = $te && date( 'Y-m-d', $ts ) === date( 'Y-m-d', $te );
+        if ( $te && ! $same_day ) {
+            // Multi-giorno: "dal 9 al 11 luglio 2026"
+            return 'dal ' . date_i18n( 'j', $ts ) . ' al ' . date_i18n( 'j F Y', $te );
+        }
+        $out = date_i18n( 'j F Y', $ts );
+        if ( date( 'H:i', $ts ) !== '00:00' ) { $out .= ', ore ' . date_i18n( 'H:i', $ts ); }
+        return $out;
     }
 
     /** @return int[] */
@@ -173,10 +205,13 @@ class Eventi {
             'orderby'        => 'meta_value',
             'order'          => 'ASC',
         ] );
-        // Solo eventi futuri (o senza data).
+        // Eventi futuri o in corso: resta visibile fino alla fine (per i multi-giorno).
         $events = array_filter( $events, static function ( $e ) use ( $now ) {
-            $d = (string) get_post_meta( $e->ID, '_gf_ev_data', true );
-            return ! $d || strtotime( $d ) >= $now - DAY_IN_SECONDS;
+            $d   = (string) get_post_meta( $e->ID, '_gf_ev_data', true );
+            $end = (string) get_post_meta( $e->ID, '_gf_ev_data_fine', true );
+            if ( ! $d ) { return true; }
+            $ref = $end ? strtotime( $end ) : strtotime( $d );
+            return $ref >= $now - DAY_IN_SECONDS;
         } );
 
         $uid    = get_current_user_id();
@@ -207,19 +242,26 @@ class Eventi {
 
         foreach ( $events as $e ) {
             $d     = (string) get_post_meta( $e->ID, '_gf_ev_data', true );
+            $fine  = (string) get_post_meta( $e->ID, '_gf_ev_data_fine', true );
             $luogo = (string) get_post_meta( $e->ID, '_gf_ev_luogo', true );
+            $indir = (string) get_post_meta( $e->ID, '_gf_ev_indirizzo', true );
+            $url   = (string) get_post_meta( $e->ID, '_gf_ev_url', true );
             $ids   = self::iscritti( $e->ID );
             $posti = (int) get_post_meta( $e->ID, '_gf_ev_posti', true );
             $iscr  = in_array( $uid, $ids, true );
+            $when  = self::format_date( $d, $fine );
 
             echo '<article class="gf-evento">';
             echo '<h3>' . esc_html( $e->post_title ) . '</h3>';
             echo '<p class="gf-evento__meta">';
-            if ( $d )     { echo '📅 ' . esc_html( date_i18n( 'd/m/Y H:i', strtotime( $d ) ) ) . ' '; }
-            if ( $luogo ) { echo '📍 ' . esc_html( $luogo ); }
+            if ( $when )  { echo '📅 ' . esc_html( $when ) . ' '; }
+            if ( $luogo ) { echo '&nbsp; 📍 ' . esc_html( $luogo ) . ( $indir ? ', ' . esc_html( $indir ) : '' ); }
             echo '</p>';
             if ( $e->post_content ) {
                 echo '<div class="gf-evento__desc">' . wp_kses_post( wpautop( $e->post_content ) ) . '</div>';
+            }
+            if ( $url ) {
+                echo '<p><a class="gf-btn gf-btn--ghost" href="' . esc_url( $url ) . '" target="_blank" rel="noopener">Sito dell\'evento →</a></p>';
             }
             if ( $posti > 0 ) {
                 echo '<p class="gf-muted">' . esc_html( count( $ids ) ) . ' / ' . esc_html( (string) $posti ) . ' iscritti</p>';
