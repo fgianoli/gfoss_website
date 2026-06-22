@@ -29,6 +29,22 @@ class Roles {
     public const CAP_VIEW_ACCOUNTING      = 'gfoss_view_accounting';
     public const CAP_MANAGE_ACCOUNTING    = 'gfoss_manage_accounting';
 
+    /**
+     * Ruoli associativi assegnabili dalla scheda socio (slug => etichetta).
+     * Esclude 'gfoss_archiviato' (gestito da Archivio) e i ruoli tecnici di WP.
+     */
+    public static function assignable_roles(): array {
+        return [
+            'gfoss_socio'         => 'Socio',
+            'gfoss_consigliere'   => 'Consigliere',
+            'gfoss_presidente'    => 'Presidente',
+            'gfoss_tesoriere'     => 'Tesoriere',
+            'gfoss_revisore'      => 'Revisore',
+            'gfoss_comunicazione' => 'Comunicazione',
+            'gfoss_segreteria'    => 'Segreteria',
+        ];
+    }
+
     public static function register( bool $force = false ): void {
         $current_version = get_option( 'gfoss_members_roles_version' );
         if ( ! $force && $current_version === GFOSS_MEMBERS_VERSION ) { return; }

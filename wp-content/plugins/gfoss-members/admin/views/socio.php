@@ -27,6 +27,19 @@ if ( ! empty( $_POST['_action'] ) && current_user_can( Roles::CAP_MANAGE_SOCI ) 
         update_user_meta( $uid, 'gf_volontario', empty( $_POST['gf_volontario'] ) ? '0' : '1' );
         wp_safe_redirect( add_query_arg( 'msg', 'saved', wp_get_referer() ) ); exit;
     }
+    if ( $action === 'save_roles' && current_user_can( 'promote_users' ) ) {
+        $wanted = array_map( 'sanitize_key', (array) ( $_POST['gf_roles'] ?? [] ) );
+        $u_obj  = get_userdata( $uid );
+        foreach ( Roles::assignable_roles() as $slug => $label ) {
+            $has = in_array( $slug, (array) $u_obj->roles, true );
+            if ( in_array( $slug, $wanted, true ) && ! $has ) {
+                $u_obj->add_role( $slug );
+            } elseif ( ! in_array( $slug, $wanted, true ) && $has ) {
+                $u_obj->remove_role( $slug );
+            }
+        }
+        wp_safe_redirect( add_query_arg( 'msg', 'roles', wp_get_referer() ) ); exit;
+    }
     if ( $action === 'mark_paid' ) {
         $anno   = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
         $amount = (float) str_replace( ',', '.', (string) ( $_POST['importo'] ?? '' ) );
@@ -77,7 +90,7 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
     </h1>
 
     <?php
-    $notes = [ 'saved' => 'Dati salvati.', 'paid' => 'Quota segnata come pagata.', 'unpaid' => 'Quota segnata come non pagata.', 'archived' => 'Socio archiviato.', 'reactivated' => 'Socio riabilitato.' ];
+    $notes = [ 'saved' => 'Dati salvati.', 'paid' => 'Quota segnata come pagata.', 'unpaid' => 'Quota segnata come non pagata.', 'archived' => 'Socio archiviato.', 'reactivated' => 'Socio riabilitato.', 'roles' => 'Ruoli aggiornati.' ];
     if ( isset( $notes[ $msg ] ) ) {
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $notes[ $msg ] ) . '</p></div>';
     }
@@ -93,7 +106,11 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
             <h2 style="margin-top:0">Dati socio</h2>
             <table class="widefat striped"><tbody>
                 <tr><th>Email</th><td><a href="mailto:<?php echo esc_attr( $u->user_email ); ?>"><?php echo esc_html( $u->user_email ); ?></a></td></tr>
-                <tr><th>Ruoli</th><td><?php echo esc_html( implode( ', ', $u->roles ) ); ?></td></tr>
+                <tr><th>Ruoli</th><td><?php
+                    $labels = Roles::assignable_roles();
+                    $names  = array_map( static fn( $r ) => $labels[ $r ] ?? $r, (array) $u->roles );
+                    echo esc_html( implode( ', ', $names ) );
+                ?></td></tr>
                 <tr><th>Codice fiscale</th><td><code><?php echo esc_html( (string) get_user_meta( $uid, 'gf_codice_fiscale', true ) ); ?></code></td></tr>
                 <tr><th>Città</th><td><?php echo esc_html( trim( get_user_meta( $uid, 'gf_citta', true ) . ' ' . ( get_user_meta( $uid, 'gf_provincia', true ) ? '(' . get_user_meta( $uid, 'gf_provincia', true ) . ')' : '' ) ) ); ?></td></tr>
                 <tr><th>Iscritto dal</th><td><?php echo esc_html( (string) get_user_meta( $uid, 'gf_data_ammissione', true ) ?: '—' ); ?></td></tr>
@@ -114,6 +131,33 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
                     <a class="button" href="<?php echo esc_url( Ricevuta::download_url( $uid, $year ) ); ?>">⬇ Ricevuta <?php echo esc_html( (string) $year ); ?></a>
                 <?php endif; ?>
             </p>
+        </div>
+
+        <!-- RUOLI E PERMESSI -->
+        <div class="card" style="<?php echo $card; ?>">
+            <h2 style="margin-top:0">Ruoli e permessi</h2>
+            <?php if ( current_user_can( 'promote_users' ) ) : ?>
+                <p class="description">Un socio può avere più ruoli contemporaneamente (es. Socio + Consigliere). I ruoli con accesso al backend abilitano automaticamente le scorciatoie nell'area soci.</p>
+                <form method="post" style="margin-top:10px">
+                    <?php wp_nonce_field( 'gfoss_socio_' . $uid ); ?>
+                    <input type="hidden" name="_action" value="save_roles">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem .9rem">
+                        <?php foreach ( Roles::assignable_roles() as $slug => $label ) : ?>
+                            <label style="display:flex;align-items:center;gap:.4rem">
+                                <input type="checkbox" name="gf_roles[]" value="<?php echo esc_attr( $slug ); ?>" <?php checked( in_array( $slug, (array) $u->roles, true ) ); ?>>
+                                <?php echo esc_html( $label ); ?>
+                            </label>
+                        <?php endforeach; ?>
+                    </div>
+                    <?php if ( in_array( 'administrator', (array) $u->roles, true ) ) : ?>
+                        <p class="description" style="margin-top:8px">Questo utente è anche <strong>Amministratore</strong> di WordPress: il ruolo viene mantenuto a prescindere dalle scelte qui sopra.</p>
+                    <?php endif; ?>
+                    <p style="margin-top:10px"><button type="submit" class="button button-primary">Salva ruoli</button></p>
+                </form>
+            <?php else : ?>
+                <p>Ruoli attuali: <strong><?php echo esc_html( implode( ', ', $names ) ); ?></strong></p>
+                <p class="description">Solo un amministratore può modificare i ruoli.</p>
+            <?php endif; ?>
         </div>
 
         <!-- QUOTA -->

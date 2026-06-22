@@ -79,6 +79,51 @@ class Area_Personale {
 
             <div class="gf-area__grid">
 
+                <!-- STRUMENTI DI GESTIONE (in base ai permessi) ------- -->
+                <?php
+                $tools = [];
+                if ( current_user_can( 'publish_posts' ) ) {
+                    $tools[] = [ admin_url( 'post-new.php' ),                       '✍️', 'Crea una news',        'Scrivi e pubblica una notizia sul sito.' ];
+                    $tools[] = [ admin_url( 'edit.php' ),                           '📰', 'Gestisci le news',     'Modifica o elimina le notizie pubblicate.' ];
+                }
+                if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
+                    $tools[] = [ admin_url( 'admin.php?page=gfoss-soci' ),          '👥', 'Amministra soci',      'Registro soci, quote, ruoli e archiviazione.' ];
+                }
+                if ( current_user_can( Roles::CAP_REVIEW_CANDIDATURE ) ) {
+                    $tools[] = [ admin_url( 'admin.php?page=gfoss-candidature' ),    '📝', 'Candidature',          'Approva o rifiuta le richieste di nuovi soci.' ];
+                }
+                if ( current_user_can( Roles::CAP_MANAGE_QUOTE ) ) {
+                    $tools[] = [ admin_url( 'admin.php?page=gfoss-quote' ),          '💶', 'Quote',                'Stato dei versamenti e solleciti.' ];
+                }
+                if ( current_user_can( Roles::CAP_VIEW_ACCOUNTING ) ) {
+                    $tools[] = [ admin_url( 'admin.php?page=gfoss-contabilita' ),    '📊', 'Contabilità',          'Movimenti, rendiconto e riconciliazione.' ];
+                }
+                if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
+                    $tools[] = [ admin_url( 'admin.php?page=gfoss-comunicazioni' ),  '📣', 'Comunicazioni ai soci', 'Invia un messaggio o una convocazione ai soci.' ];
+                }
+                if ( current_user_can( Roles::CAP_EXPORT_REGISTRO ) ) {
+                    $tools[] = [ admin_url( 'admin.php?page=gfoss-export' ),         '⬇️', 'Esporta registro',     'Scarica il registro soci in CSV.' ];
+                }
+                if ( $tools ) :
+                ?>
+                <section class="gf-area__card gf-area__card--wide">
+                    <header class="gf-area__card-head"><h2>Strumenti di gestione</h2></header>
+                    <p class="gf-muted">In base al tuo ruolo hai accesso a queste funzioni di amministrazione.</p>
+                    <div class="gf-tools">
+                        <?php foreach ( $tools as $t ) : ?>
+                            <a class="gf-tool" href="<?php echo esc_url( $t[0] ); ?>">
+                                <span class="gf-tool__ico" aria-hidden="true"><?php echo $t[1]; ?></span>
+                                <span class="gf-tool__txt">
+                                    <strong><?php echo esc_html( $t[2] ); ?></strong>
+                                    <small><?php echo esc_html( $t[3] ); ?></small>
+                                </span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                    <p style="margin-top:12px"><a class="gf-btn gf-btn--ghost" href="<?php echo esc_url( admin_url() ); ?>">Vai al pannello WordPress →</a></p>
+                </section>
+                <?php endif; ?>
+
                 <!-- TESSERA DIGITALE ----------------------------------- -->
                 <section class="gf-area__card">
                     <header class="gf-area__card-head">

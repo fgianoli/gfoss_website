@@ -25,6 +25,19 @@
 .gf-area__card h2 { font-family: Manrope, sans-serif; font-size: 1.1rem; margin: 0; color: #0F2330; }
 .gf-area__card h3 { font-family: Manrope, sans-serif; font-size: .95rem; margin: 1rem 0 .5rem; color: #0F2330; }
 
+/* Strumenti di gestione (scorciatoie backend) */
+.gf-tools { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.gf-tool {
+    display: flex; align-items: center; gap: .65rem; text-decoration: none;
+    padding: .7rem .8rem; border: 1px solid #E2E8EC; border-radius: 10px;
+    background: #F7FAFB; color: #0F2330; transition: border-color .15s, box-shadow .15s, transform .05s;
+}
+.gf-tool:hover { border-color: #1A6FA0; box-shadow: 0 2px 8px rgba(15,35,48,.08); transform: translateY(-1px); }
+.gf-tool__ico { font-size: 1.4rem; line-height: 1; }
+.gf-tool__txt { display: flex; flex-direction: column; min-width: 0; }
+.gf-tool__txt strong { font-size: .95rem; }
+.gf-tool__txt small { color: #4A5C6A; font-size: .78rem; }
+
 /* Tessera anteprima inline */
 .gf-tessera-mini { padding: .5rem 0 1rem; }
 .gf-tessera {
