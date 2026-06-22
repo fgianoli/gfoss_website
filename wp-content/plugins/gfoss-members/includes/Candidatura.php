@@ -260,9 +260,14 @@ class Candidatura {
     public static function next_numero_socio(): string {
         $year = (int) gmdate( 'Y' );
         $opt  = 'gfoss_numero_socio_seq_' . $year;
-        $seq  = (int) get_option( $opt, 0 ) + 1;
+        $seq  = (int) get_option( $opt, 0 );
+        // Salta eventuali numeri già assegnati (robusto anche se il contatore è disallineato).
+        do {
+            $seq++;
+            $num = sprintf( '%d-%05d', $year, $seq );
+        } while ( self::numero_in_use( $num ) );
         update_option( $opt, $seq, false );
-        return sprintf( '%d-%05d', $year, $seq );
+        return $num;
     }
 
     /** Il numero socio è già usato da un altro utente? */
