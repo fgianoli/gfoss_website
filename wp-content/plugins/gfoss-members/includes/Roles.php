@@ -9,7 +9,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  *   gfoss_socio        — base: legge la sua quota, scarica la tessera, vede i documenti riservati
  *   gfoss_consigliere  — membro del Consiglio Direttivo: approva/rifiuta candidature
  *   gfoss_tesoriere    — accesso esclusivo a contabilità (capability gestita dal plugin gfoss-accounting)
- *   gfoss_presidente   — capability di consigliere + può convocare assemblee, gestire ruoli direttivo
+ *   gfoss_presidente   — vista completa: consigliere + tesoriere + comunicazione + assemblee (tutto tranne le chiavi tecniche di WP)
  *   gfoss_revisore     — sola lettura su contabilità + bilanci
  *
  * I ruoli sono accumulabili sul singolo utente WP (un socio può essere anche consigliere e tesoriere).
@@ -51,7 +51,13 @@ class Roles {
 
         $caps_socio       = self::caps_socio();
         $caps_consigliere = array_merge( $caps_socio, self::caps_consigliere() );
-        $caps_presidente  = array_merge( $caps_consigliere, [ self::CAP_MANAGE_ASSEMBLEE => true ] );
+        // Presidente: vista completa sull'ambito associativo (direttivo + tesoreria +
+        // comunicazione + assemblee). Restano escluse solo le chiavi tecniche di WP
+        // (plugin/temi/impostazioni/utenti), riservate all'Amministratore.
+        $caps_presidente  = array_merge(
+            $caps_consigliere, self::caps_tesoriere(), self::caps_comunicazione(),
+            [ self::CAP_MANAGE_ASSEMBLEE => true ]
+        );
         $caps_tesoriere   = array_merge( $caps_socio, self::caps_tesoriere() );
         $caps_revisore    = array_merge( $caps_socio, [ self::CAP_VIEW_ACCOUNTING => true ] );
         $caps_comunicazione = array_merge( $caps_socio, self::caps_comunicazione() );
