@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Ruoli associativi modellati sugli organi statutari (artt. 10, 15, 16, 17 dello Statuto).
  *
  *   gfoss_socio        — base: legge la sua quota, scarica la tessera, vede i documenti riservati
- *   gfoss_consigliere  — membro del Consiglio Direttivo: approva/rifiuta candidature
+ *   gfoss_consigliere  — membro del Consiglio Direttivo: approva/rifiuta candidature + pubblica le News
  *   gfoss_tesoriere    — accesso esclusivo a contabilità (capability gestita dal plugin gfoss-accounting)
  *   gfoss_presidente   — vista completa: consigliere + tesoriere + comunicazione + assemblee (tutto tranne le chiavi tecniche di WP)
  *   gfoss_revisore     — sola lettura su contabilità + bilanci
@@ -50,7 +50,8 @@ class Roles {
         if ( ! $force && $current_version === GFOSS_MEMBERS_VERSION ) { return; }
 
         $caps_socio       = self::caps_socio();
-        $caps_consigliere = array_merge( $caps_socio, self::caps_consigliere() );
+        // Consigliere: direttivo + comunicazione (può scrivere e pubblicare le News).
+        $caps_consigliere = array_merge( $caps_socio, self::caps_consigliere(), self::caps_comunicazione() );
         // Presidente: vista completa sull'ambito associativo (direttivo + tesoreria +
         // comunicazione + assemblee). Restano escluse solo le chiavi tecniche di WP
         // (plugin/temi/impostazioni/utenti), riservate all'Amministratore.
