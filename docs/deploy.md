@@ -210,6 +210,45 @@ In **Impostazioni → Generale** (o tramite custom field, in arrivo) configura `
 
 Configura `rclone` o `restic` con un bucket S3-compatibile (Wasabi, Backblaze B2) per copiare `/opt/backups/gfoss` settimanalmente.
 
+## 12-bis. Spazio dati GIS dei soci (PostGIS + GeoServer) — opzionale
+
+Permette a ogni socio in regola di **attivare in self-service** (dalla propria area
+soci) uno schema PostGIS dedicato in lettura/scrittura e un account GeoServer con
+workspace e datastore già collegati.
+
+> Il servizio si attiva solo se le variabili `GFOSS_PG_*` / `GFOSS_GEOSERVER_*` sono
+> valorizzate nel `.env`. Se vuote, la card "Spazio dati GIS" resta nascosta ai soci.
+
+**Prerequisiti**
+
+1. L'immagine WordPress include già l'estensione PHP `pgsql` (vedi `Dockerfile`):
+   dopo un `git pull` esegui `docker compose build wordpress`.
+2. Il container `gfoss-wp` deve poter raggiungere i container PostGIS e GeoServer.
+   Collegalo alla loro rete docker:
+   ```bash
+   docker network ls                       # individua la rete dei container GIS
+   docker network connect <rete-gis> gfoss-wp
+   ```
+3. Su PostGIS crea un ruolo amministrativo dedicato (NON superuser) e il DB condiviso:
+   ```sql
+   CREATE ROLE gfoss_provisioner LOGIN PASSWORD 'xxx' CREATEROLE;
+   CREATE DATABASE soci_gis OWNER gfoss_provisioner;
+   \c soci_gis
+   CREATE EXTENSION postgis;
+   REVOKE CREATE ON SCHEMA public FROM PUBLIC;   -- i soci non scrivono su public
+   ```
+4. Su GeoServer assicurati di avere le credenziali admin per la REST API.
+
+**Configurazione** — compila nel `.env` il blocco "Spazio dati GIS" (vedi `.env.example`),
+poi `docker compose up -d`. Test rapido della connessione PostGIS dal container:
+```bash
+docker compose exec wordpress php -r 'var_dump((bool)@pg_connect("host=postgis dbname=soci_gis user=gfoss_provisioner password=xxx"));'
+```
+
+**Sicurezza** — il ruolo provisioner ha solo `CREATEROLE` (non è superuser); ogni socio
+ha accesso esclusivo al proprio schema; le password sono generate e mostrate una sola
+volta (rigenerabili dal socio). Le credenziali admin stanno solo nel `.env` (mai in git).
+
 ## 13. Monitoring (consigliato)
 
 - **Uptime Kuma** (container leggero) per ping HTTP su `gfoss.it`

@@ -75,6 +75,16 @@ class Area_Personale {
                 <div class="gf-card gf-card--success">Pagamento ricevuto. Lo stato della quota verrà aggiornato a breve (al ricevimento della notifica PayPal).</div>
             <?php elseif ( $msg === 'paypal_cancel' ) : ?>
                 <div class="gf-card gf-card--warn">Pagamento annullato. Puoi riprovare quando vuoi.</div>
+            <?php elseif ( $msg === 'gis_ok' ) : ?>
+                <div class="gf-card gf-card--success">Spazio dati GIS attivato. Trovi i parametri di connessione qui sotto.</div>
+            <?php elseif ( $msg === 'gis_partial' ) : ?>
+                <div class="gf-card gf-card--warn">PostGIS attivato, ma GeoServer ha segnalato un problema (dettagli nella card GIS).</div>
+            <?php elseif ( $msg === 'gis_err' ) : ?>
+                <div class="gf-card gf-card--warn">Attivazione dello spazio GIS non riuscita (dettagli nella card GIS).</div>
+            <?php elseif ( $msg === 'gis_not_eligible' ) : ?>
+                <div class="gf-card gf-card--warn">Lo spazio GIS è riservato ai soci con quota in regola.</div>
+            <?php elseif ( $msg === 'gis_unconfigured' ) : ?>
+                <div class="gf-card gf-card--warn">Il servizio GIS non è ancora configurato. Riprova più tardi.</div>
             <?php endif; ?>
 
             <div class="gf-area__grid">
@@ -237,6 +247,13 @@ class Area_Personale {
                     <p class="gf-muted">Spazio di discussione riservato ai soci.</p>
                 </section>
                 <?php endif; ?>
+
+                <!-- SPAZIO DATI GIS (PostGIS + GeoServer) ------------- -->
+                <?php
+                if ( class_exists( __NAMESPACE__ . '\\Gis' ) ) {
+                    echo Gis::render_area_card( $user ); // markup già escapato internamente
+                }
+                ?>
 
                 <!-- DATI PERSONALI ------------------------------------ -->
                 <section class="gf-area__card gf-area__card--wide">

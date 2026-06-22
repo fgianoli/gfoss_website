@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_MEMBERS_VERSION',  '1.8.2' );
+define( 'GFOSS_MEMBERS_VERSION',  '1.9.0' );
 define( 'GFOSS_MEMBERS_FILE',     __FILE__ );
 define( 'GFOSS_MEMBERS_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'GFOSS_MEMBERS_URL',      plugin_dir_url( __FILE__ ) );
@@ -61,6 +61,7 @@ add_action( 'plugins_loaded', static function () {
     \GFOSS_Members\Sondaggi::init();
     \GFOSS_Members\Forum::init();
     \GFOSS_Members\Newsletter::init();
+    \GFOSS_Members\Gis::init();
 
     if ( is_admin() ) {
         \GFOSS_Members\Admin::init();

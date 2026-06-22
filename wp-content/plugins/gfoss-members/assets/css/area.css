@@ -38,6 +38,13 @@
 .gf-tool__txt strong { font-size: .95rem; }
 .gf-tool__txt small { color: #4A5C6A; font-size: .78rem; }
 
+/* Blocco connessione (spazio GIS) */
+.gf-pre {
+    background: #0F2330; color: #E6F0F5; border-radius: 8px;
+    padding: .7rem .9rem; overflow-x: auto; font-size: .82rem; margin: .2rem 0 0;
+}
+.gf-pre code { color: inherit; background: none; white-space: pre; }
+
 /* Tessera anteprima inline */
 .gf-tessera-mini { padding: .5rem 0 1rem; }
 .gf-tessera {
