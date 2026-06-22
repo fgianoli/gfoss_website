@@ -257,12 +257,23 @@ class Candidatura {
      * Numero socio nel formato ANNO-NNNNN (es. 2026-00001): anno di iscrizione +
      * progressivo a 5 cifre che riparte ogni anno. Generato all'approvazione.
      */
-    private static function next_numero_socio(): string {
+    public static function next_numero_socio(): string {
         $year = (int) gmdate( 'Y' );
         $opt  = 'gfoss_numero_socio_seq_' . $year;
         $seq  = (int) get_option( $opt, 0 ) + 1;
         update_option( $opt, $seq, false );
         return sprintf( '%d-%05d', $year, $seq );
+    }
+
+    /** Il numero socio è già usato da un altro utente? */
+    public static function numero_in_use( string $numero, int $exclude_uid = 0 ): bool {
+        if ( $numero === '' ) { return false; }
+        global $wpdb;
+        $id = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = 'gf_numero_socio' AND meta_value = %s AND user_id <> %d LIMIT 1",
+            $numero, $exclude_uid
+        ) );
+        return $id > 0;
     }
 
     public static function new_token(): string {

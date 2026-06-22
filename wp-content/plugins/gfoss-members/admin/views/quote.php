@@ -30,7 +30,7 @@ $year     = isset( $_GET['anno'] ) ? (int) $_GET['anno'] : $year_now;
 $msg      = sanitize_key( (string) ( $_GET['msg'] ?? '' ) );
 
 $users = get_users( [
-    'role__in' => [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore' ],
+    'role__in' => [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione', 'gfoss_segreteria' ],
     'orderby'  => 'display_name',
 ] );
 $quote   = Quote::all_for_year( $year );

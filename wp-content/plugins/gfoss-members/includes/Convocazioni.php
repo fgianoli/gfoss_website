@@ -208,7 +208,7 @@ class Convocazioni {
         if ( ! $convs ) { echo '<p class="gf-muted">Nessuna convocazione in programma.</p></div>'; return ob_get_clean(); }
 
         // Elenco soci in regola per la delega (escluso me).
-        $soci = get_users( [ 'role__in' => [ 'gfoss_socio','gfoss_consigliere','gfoss_presidente','gfoss_tesoriere','gfoss_revisore' ], 'orderby' => 'display_name' ] );
+        $soci = get_users( [ 'role__in' => [ 'gfoss_socio','gfoss_consigliere','gfoss_presidente','gfoss_tesoriere','gfoss_revisore','gfoss_comunicazione','gfoss_segreteria' ], 'orderby' => 'display_name' ] );
 
         foreach ( $convs as $c ) {
             $d    = (string) get_post_meta( $c->ID, '_gf_cv_data', true );

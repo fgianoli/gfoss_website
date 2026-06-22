@@ -65,7 +65,7 @@ class Mappa_Soci {
     /** Soci che hanno dato il consenso e hanno coordinate. */
     private static function located_members(): array {
         $users = get_users( [
-            'role__in'   => [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore' ],
+            'role__in'   => [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione', 'gfoss_segreteria' ],
             'meta_query' => [
                 [ 'key' => 'gf_mappa_consenso', 'value' => '1' ],
                 [ 'key' => 'gf_lat', 'value' => '', 'compare' => '!=' ],

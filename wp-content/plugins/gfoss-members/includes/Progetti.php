@@ -92,6 +92,9 @@ class Progetti {
             </select></p>
         <p><label><strong>Se l'obiettivo non è raggiunto</strong></label><br>
             <textarea name="gf_pr_nota_mancato" rows="3" class="widefat" placeholder="Es. i fondi raccolti saranno destinati al progetto nei limiti del possibile o a finalità analoghe."><?php echo esc_textarea( $nota ); ?></textarea></p>
+        <p><label><strong>Rendicontazione</strong> <small>(come sono stati usati i fondi)</small></label><br>
+            <?php $rend = (string) get_post_meta( $post->ID, '_gf_pr_rendiconto', true ); ?>
+            <textarea name="gf_pr_rendiconto" rows="4" class="widefat" placeholder="Pubblicato in pagina per trasparenza verso i donatori (art. 7 CTS). Es. dettaglio delle spese coperte dalla raccolta."><?php echo esc_textarea( $rend ); ?></textarea></p>
         <?php
     }
 
@@ -132,6 +135,7 @@ class Progetti {
         update_post_meta( $post_id, '_gf_pr_scadenza',     sanitize_text_field( wp_unslash( $_POST['gf_pr_scadenza'] ?? '' ) ) );
         update_post_meta( $post_id, '_gf_pr_stato',        sanitize_key( $_POST['gf_pr_stato'] ?? 'attiva' ) );
         update_post_meta( $post_id, '_gf_pr_nota_mancato', sanitize_textarea_field( wp_unslash( $_POST['gf_pr_nota_mancato'] ?? '' ) ) );
+        update_post_meta( $post_id, '_gf_pr_rendiconto',   wp_kses_post( wp_unslash( $_POST['gf_pr_rendiconto'] ?? '' ) ) );
     }
 
     public static function columns( array $cols ): array {
@@ -229,6 +233,12 @@ class Progetti {
         // Nota "se non raggiunto".
         $nota = (string) get_post_meta( $id, '_gf_pr_nota_mancato', true );
         if ( $nota ) { echo '<p class="gf-muted" style="margin-top:1rem"><em>' . esc_html( $nota ) . '</em></p>'; }
+
+        // Rendicontazione pubblica: come sono stati usati i fondi (trasparenza, art. 7 CTS).
+        $rend = (string) get_post_meta( $id, '_gf_pr_rendiconto', true );
+        if ( $rend ) {
+            echo '<div class="gf-cf__rendiconto" style="margin-top:1.5rem"><h3>Rendicontazione</h3>' . wp_kses_post( wpautop( $rend ) ) . '</div>';
+        }
 
         // Sostenitori (con consenso).
         $sup = Donazioni::supporters( $id );

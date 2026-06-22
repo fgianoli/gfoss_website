@@ -39,6 +39,12 @@ class Roles {
         $caps_tesoriere   = array_merge( $caps_socio, self::caps_tesoriere() );
         $caps_revisore    = array_merge( $caps_socio, [ self::CAP_VIEW_ACCOUNTING => true ] );
         $caps_comunicazione = array_merge( $caps_socio, self::caps_comunicazione() );
+        // Segreteria: gestione associativa COMPLETA (soci, quote, contabilità, assemblee,
+        // comunicazioni, news) ma SENZA le chiavi tecniche di WordPress (plugin/temi/impostazioni).
+        $caps_segreteria = array_merge(
+            $caps_socio, self::caps_consigliere(), self::caps_tesoriere(), self::caps_comunicazione(),
+            [ self::CAP_MANAGE_ASSEMBLEE => true ]
+        );
 
         self::upsert_role( 'gfoss_socio',         __( 'Socio GFOSS', 'gfoss-members' ),   $caps_socio );
         self::upsert_role( 'gfoss_consigliere',   __( 'Consigliere',  'gfoss-members' ),   $caps_consigliere );
@@ -46,6 +52,7 @@ class Roles {
         self::upsert_role( 'gfoss_tesoriere',     __( 'Tesoriere',    'gfoss-members' ),   $caps_tesoriere );
         self::upsert_role( 'gfoss_revisore',      __( 'Revisore',     'gfoss-members' ),   $caps_revisore );
         self::upsert_role( 'gfoss_comunicazione', __( 'Comunicazione', 'gfoss-members' ),  $caps_comunicazione );
+        self::upsert_role( 'gfoss_segreteria',    __( 'Segreteria', 'gfoss-members' ),     $caps_segreteria );
         self::upsert_role( 'gfoss_archiviato',    __( 'Socio archiviato', 'gfoss-members' ), [ 'read' => true ] );
 
         // Administrator ottiene tutto.

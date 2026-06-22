@@ -17,7 +17,13 @@ if ( ! empty( $_POST['_action'] ) && current_user_can( Roles::CAP_MANAGE_SOCI ) 
     $action = sanitize_key( (string) $_POST['_action'] );
 
     if ( $action === 'save_meta' ) {
-        update_user_meta( $uid, 'gf_numero_socio', sanitize_text_field( wp_unslash( $_POST['gf_numero_socio'] ?? '' ) ) );
+        $num = sanitize_text_field( wp_unslash( $_POST['gf_numero_socio'] ?? '' ) );
+        if ( $num === '' ) {
+            $num = Candidatura::next_numero_socio(); // auto se lasciato vuoto
+        } elseif ( Candidatura::numero_in_use( $num, $uid ) ) {
+            wp_safe_redirect( add_query_arg( 'msg', 'dup_numero', wp_get_referer() ) ); exit;
+        }
+        update_user_meta( $uid, 'gf_numero_socio', $num );
         update_user_meta( $uid, 'gf_volontario', empty( $_POST['gf_volontario'] ) ? '0' : '1' );
         wp_safe_redirect( add_query_arg( 'msg', 'saved', wp_get_referer() ) ); exit;
     }
@@ -74,6 +80,9 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
     $notes = [ 'saved' => 'Dati salvati.', 'paid' => 'Quota segnata come pagata.', 'unpaid' => 'Quota segnata come non pagata.', 'archived' => 'Socio archiviato.', 'reactivated' => 'Socio riabilitato.' ];
     if ( isset( $notes[ $msg ] ) ) {
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $notes[ $msg ] ) . '</p></div>';
+    }
+    if ( $msg === 'dup_numero' ) {
+        echo '<div class="notice notice-error is-dismissible"><p>Numero socio già assegnato a un altro socio: scegline uno diverso, oppure lascia il campo vuoto per generarlo automaticamente.</p></div>';
     }
     ?>
 

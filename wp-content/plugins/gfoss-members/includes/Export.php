@@ -39,7 +39,7 @@ class Export {
 
     private static function stream_registro( bool $only_volontari, int $year ): void {
         $args = [
-            'role__in' => [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore' ],
+            'role__in' => [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione', 'gfoss_segreteria' ],
             'orderby'  => 'meta_value_num',
             'meta_key' => 'gf_numero_socio',
             'order'    => 'ASC',
@@ -149,7 +149,7 @@ class Export {
     }
 
     private static function ruolo_principale( \WP_User $u ): string {
-        $priority = [ 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_consigliere', 'gfoss_socio' ];
+        $priority = [ 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_consigliere', 'gfoss_segreteria', 'gfoss_comunicazione', 'gfoss_socio' ];
         foreach ( $priority as $r ) {
             if ( in_array( $r, (array) $u->roles, true ) ) {
                 return str_replace( 'gfoss_', '', $r );

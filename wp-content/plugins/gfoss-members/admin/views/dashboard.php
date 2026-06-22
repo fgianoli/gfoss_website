@@ -3,7 +3,7 @@ namespace GFOSS_Members;
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
 $year       = (int) gmdate( 'Y' );
-$ruoli_soci = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore' ];
+$ruoli_soci = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione', 'gfoss_segreteria' ];
 $all_soci   = get_users( [ 'role__in' => $ruoli_soci, 'fields' => [ 'ID' ] ] );
 $tot_soci   = count( $all_soci );
 $unpaid     = Quote::unpaid_for_year( $year );

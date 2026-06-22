@@ -7,7 +7,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * Cap: CAP_MANAGE_SOCI.
  */
 
-$ruoli = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore' ];
+$ruoli = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione', 'gfoss_segreteria' ];
 $sent  = null;
 
 if ( ! empty( $_POST['_action'] ) && $_POST['_action'] === 'invia' && current_user_can( Roles::CAP_MANAGE_SOCI ) ) {

@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_MEMBERS_VERSION',  '1.6.0' );
+define( 'GFOSS_MEMBERS_VERSION',  '1.7.0' );
 define( 'GFOSS_MEMBERS_FILE',     __FILE__ );
 define( 'GFOSS_MEMBERS_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'GFOSS_MEMBERS_URL',      plugin_dir_url( __FILE__ ) );
@@ -93,6 +93,6 @@ function gfoss_members_is_socio( int $user_id ): bool {
     if ( ! $u ) { return false; }
     // Tutte le cariche del direttivo sono soci a tutti gli effetti (ruoli cumulabili,
     // ma anche se assegnato il solo ruolo di carica deve valere come socio).
-    $member_roles = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione' ];
+    $member_roles = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione', 'gfoss_segreteria' ];
     return (bool) array_intersect( $member_roles, (array) $u->roles );
 }

@@ -21,7 +21,7 @@ $stato = isset( $_GET['stato'] ) ? sanitize_key( (string) $_GET['stato'] ) : 'at
 $msg   = sanitize_key( (string) ( $_GET['msg'] ?? '' ) );
 $year  = (int) gmdate( 'Y' );
 
-$active_roles = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione' ];
+$active_roles = [ 'gfoss_socio', 'gfoss_consigliere', 'gfoss_presidente', 'gfoss_tesoriere', 'gfoss_revisore', 'gfoss_comunicazione', 'gfoss_segreteria' ];
 
 if ( $stato === 'archiviati' ) {
     $users = Archivio::archived_members();
