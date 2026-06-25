@@ -434,6 +434,23 @@ gfoss_seed_page( 'cookie-policy', 'Cookie Policy', 0, <<<HTML
 HTML
 , null );
 
+// 8b. Pagina di ritorno dei pagamenti PayPal (return URL del gateway): ringraziamento generico.
+gfoss_seed_page( 'completato', 'Pagamento completato', 0, <<<HTML
+<!-- wp:heading {"level":2} --><h2>Grazie di cuore! 💚</h2><!-- /wp:heading -->
+<!-- wp:paragraph --><p>Abbiamo ricevuto il tuo pagamento. Il tuo contributo sostiene concretamente lo sviluppo, la diffusione e la tutela del <strong>software geografico libero</strong> in Italia.</p><!-- /wp:paragraph -->
+<!-- wp:paragraph --><p>Riceverai a breve una <strong>conferma via email</strong>. La registrazione contabile può richiedere qualche minuto: non serve ripetere il pagamento.</p><!-- /wp:paragraph -->
+<!-- wp:list --><ul>
+<li>Se hai versato la <strong>quota associativa</strong>, lo stato della tua iscrizione e la tessera digitale si aggiornano automaticamente nella tua <a href="/area-soci/">area soci</a>.</li>
+<li>Se hai effettuato una <strong>erogazione liberale</strong>, conserva la ricevuta PayPal: le donazioni a favore di un Ente del Terzo Settore possono dare diritto ad agevolazioni fiscali (art. 83 D.Lgs. 117/2017).</li>
+</ul><!-- /wp:list -->
+<!-- wp:paragraph --><p>Per qualsiasi necessità scrivici a <a href="mailto:info@gfoss.it">info@gfoss.it</a>.</p><!-- /wp:paragraph -->
+<!-- wp:buttons --><div class="wp-block-buttons">
+<!-- wp:button --><div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="/">Torna alla home</a></div><!-- /wp:button -->
+<!-- wp:button {"className":"is-style-outline"} --><div class="wp-block-button is-style-outline"><a class="wp-block-button__link wp-element-button" href="/area-soci/">Vai all'area soci</a></div><!-- /wp:button -->
+</div><!-- /wp:buttons -->
+HTML
+, null );
+
 // 9. Servizio soci: editor metadati RNDT (shortcode del plugin rndt-manager)
 $area = get_page_by_path( 'area-soci', OBJECT, 'page' );
 gfoss_seed_page( 'metadati-rndt', 'Metadati RNDT', $area ? (int) $area->ID : 0, <<<HTML

@@ -30,7 +30,7 @@
             <ul class="site-footer__menu">
                 <li><a href="<?php echo esc_url( home_url( '/associazione/iscrizioni-rinnovi/' ) ); ?>"><?php esc_html_e( 'Iscriviti / Rinnova', 'gfoss-2026' ); ?></a></li>
                 <li><a href="<?php echo esc_url( home_url( '/5x1000/' ) ); ?>"><?php esc_html_e( 'Dona il 5×1000', 'gfoss-2026' ); ?></a></li>
-                <li><a href="https://www.paypal.com/donate/?hosted_button_id=<?php echo esc_attr( defined( 'GFOSS_PAYPAL_BUTTON_ID' ) ? GFOSS_PAYPAL_BUTTON_ID : '' ); ?>" rel="noopener" target="_blank">PayPal</a></li>
+                <li><a href="https://www.paypal.com/donate/?hosted_button_id=FMST69RX3D3WJ" rel="noopener" target="_blank"><?php esc_html_e( 'Erogazione liberale', 'gfoss-2026' ); ?></a></li>
             </ul>
         </div>
 
