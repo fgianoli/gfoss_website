@@ -340,11 +340,10 @@ gfoss_seed_page( 'bilanci-associazione', 'Bilanci e verbali', $assoc_id, <<<HTML
 HTML
 , 2 );
 
-// 5. Iscrizioni e Rinnovi
-gfoss_seed_page( 'iscrizioni-rinnovi', 'Iscrizioni e Rinnovi', $assoc_id, <<<HTML
+// 5. Iscrizioni e Rinnovi (pagina UNICA: info + modulo di iscrizione)
+$iscr_id = gfoss_seed_page( 'iscrizioni-rinnovi', 'Iscrizioni e Rinnovi', $assoc_id, <<<HTML
 <!-- wp:heading --><h2>Nuove iscrizioni</h2><!-- /wp:heading -->
-<!-- wp:paragraph --><p>Per iscriversi a GFOSS.it APS è possibile compilare il modulo direttamente online. Le iscrizioni sono soggette ad approvazione del Consiglio Direttivo (art. 6 dello Statuto).</p><!-- /wp:paragraph -->
-<!-- wp:buttons --><div class="wp-block-buttons"><!-- wp:button --><div class="wp-block-button"><a class="wp-block-button__link" href="/associazione/iscriviti/">→ Compila il modulo di iscrizione</a></div><!-- /wp:button --></div><!-- /wp:buttons -->
+<!-- wp:paragraph --><p>Per iscriversi a GFOSS.it APS è possibile compilare il modulo online che trovi in fondo a questa pagina. Le iscrizioni sono soggette ad approvazione del Consiglio Direttivo (art. 6 dello Statuto).</p><!-- /wp:paragraph -->
 
 <!-- wp:heading --><h2>Rinnovi</h2><!-- /wp:heading -->
 <!-- wp:paragraph --><p>La quota associativa annuale è fissata in <strong>30,00 €</strong> e il rinnovo va effettuato entro il <strong>31 dicembre</strong> di ogni anno.</p><!-- /wp:paragraph -->
@@ -362,21 +361,25 @@ gfoss_seed_page( 'iscrizioni-rinnovi', 'Iscrizioni e Rinnovi', $assoc_id, <<<HTM
 <!-- wp:paragraph --><p><em>Nota bene: il beneficiario dev'essere sempre indicato per esteso. In nessun caso scrivere semplicemente "GFOSS.it". Se i caratteri sono limitati, è preferibile scrivere il nome fino all'esaurimento dei caratteri disponibili piuttosto che usare abbreviazioni.</em></p><!-- /wp:paragraph -->
 
 <!-- wp:heading {"level":4} --><h4>PayPal</h4><!-- /wp:heading -->
-<!-- wp:paragraph --><p>I soci già iscritti possono rinnovare con un click dalla loro <a href="/area-soci/">area personale</a>. Per chi non è ancora socio, il pulsante PayPal compare dopo aver inviato il modulo di iscrizione.</p><!-- /wp:paragraph -->
+<!-- wp:paragraph --><p>I soci già iscritti possono rinnovare con un click dalla loro <a href="/area-soci/">area personale</a>. Per chi non è ancora socio, il pulsante PayPal compare dopo aver inviato il modulo di iscrizione qui sotto.</p><!-- /wp:paragraph -->
+
+<!-- wp:heading --><h2>Domanda di iscrizione online</h2><!-- /wp:heading -->
+<!-- wp:shortcode -->
+[gfoss_iscrizione_form]
+<!-- /wp:shortcode -->
 HTML
 , 4 );
 
-// 5b. Sposta la pagina "Iscriviti" (creata dall'attivatore al root) sotto "Associazione"
-$iscriviti_id = (int) get_option( 'gfoss_page_iscriviti' );
-if ( $iscriviti_id ) {
-    wp_update_post( [
-        'ID'          => $iscriviti_id,
-        'post_parent' => $assoc_id,
-        'post_name'   => 'iscriviti',
-        'menu_order'  => 4,
-    ] );
-    WP_CLI::log( "  ↻ pagina 'Iscriviti' spostata sotto Associazione (slug: iscriviti)" );
+// 5b. Unifica iscrizioni: il modulo vive ORA nella pagina "Iscrizioni e Rinnovi".
+// Si ripunta l'option del plugin a questa pagina e si elimina la vecchia pagina
+// "Iscriviti a GFOSS.it" duplicata (l'attivatore non la ricrea: l'option è valida).
+$old_iscriviti = (int) get_option( 'gfoss_page_iscriviti' );
+if ( $old_iscriviti && $old_iscriviti !== $iscr_id ) {
+    wp_delete_post( $old_iscriviti, true );
+    WP_CLI::log( "  ✗ rimossa pagina duplicata 'Iscriviti a GFOSS.it' (#$old_iscriviti)" );
 }
+update_option( 'gfoss_page_iscriviti', $iscr_id );
+WP_CLI::log( "  ↻ modulo iscrizione unificato nella pagina 'Iscrizioni e Rinnovi' (#$iscr_id)" );
 
 // 6. Organi associativi (Consiglio Direttivo in carica)
 gfoss_seed_page( 'organi-associativi', 'Organi associativi', $assoc_id, <<<HTML
