@@ -99,6 +99,12 @@ class Area_Personale {
                 if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
                     $tools[] = [ admin_url( 'admin.php?page=gfoss-soci' ),          '👥', 'Amministra soci',      'Registro soci, quote, ruoli e archiviazione.' ];
                 }
+                if ( current_user_can( Roles::CAP_MANAGE_VOLONTARI ) ) {
+                    $tools[] = [ admin_url( 'admin.php?page=gfoss-volontari' ),      '🦺', 'Registro volontari',   'Liste volontari per evento e documento assicurativo (PDF).' ];
+                }
+                if ( current_user_can( 'edit_posts' ) ) {
+                    $tools[] = [ admin_url( 'post-new.php?post_type=' . ( class_exists( __NAMESPACE__ . '\\Materiali' ) ? Materiali::CPT : 'gfoss_risorsa' ) ), '📎', 'Carica un documento', 'Aggiungi una risorsa/documento riservato ai soci.' ];
+                }
                 if ( current_user_can( Roles::CAP_REVIEW_CANDIDATURE ) ) {
                     $tools[] = [ admin_url( 'admin.php?page=gfoss-candidature' ),    '📝', 'Candidature',          'Approva o rifiuta le richieste di nuovi soci.' ];
                 }

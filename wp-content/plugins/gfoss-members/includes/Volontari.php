@@ -57,6 +57,78 @@ class Volontari {
         return (int) $wpdb->get_var( "SELECT COUNT(*) FROM $t WHERE data_cessazione IS NULL" );
     }
 
+    /** Prossimo numero progressivo di registro (art. 17: tenuta numerata). */
+    public static function next_n_registro(): int {
+        global $wpdb;
+        $t = Schema::table_volontari();
+        return 1 + (int) $wpdb->get_var( "SELECT COALESCE(MAX(n_registro),0) FROM $t" );
+    }
+
+    // --- Liste per evento --------------------------------------------------
+
+    /** @return array<int,\WP_Post> eventi del sito, più recenti prima. */
+    public static function eventi_list(): array {
+        return get_posts( [
+            'post_type'   => Eventi::CPT,
+            'numberposts' => 200,
+            'post_status' => [ 'publish', 'future', 'draft' ],
+            'meta_key'    => '_gf_ev_data',
+            'orderby'     => 'meta_value',
+            'order'       => 'DESC',
+        ] );
+    }
+
+    public static function event_meta( int $evento_id ): array {
+        $p = get_post( $evento_id );
+        return [
+            'titolo' => $p ? $p->post_title : '',
+            'inizio' => (string) get_post_meta( $evento_id, '_gf_ev_data', true ),
+            'fine'   => (string) get_post_meta( $evento_id, '_gf_ev_data_fine', true ),
+            'luogo'  => (string) get_post_meta( $evento_id, '_gf_ev_luogo', true ),
+        ];
+    }
+
+    /** Periodo leggibile dell'evento, gestendo i multi-giorno. */
+    public static function format_periodo( string $inizio, string $fine ): string {
+        if ( ! $inizio ) { return ''; }
+        $i = strtotime( $inizio );
+        $f = $fine ? strtotime( $fine ) : 0;
+        if ( $f && date( 'Y-m-d', $f ) !== date( 'Y-m-d', $i ) ) {
+            return 'dal ' . date_i18n( 'd/m/Y', $i ) . ' al ' . date_i18n( 'd/m/Y', $f );
+        }
+        return date_i18n( 'd/m/Y', $i );
+    }
+
+    /** @return array<int,array> volontari collegati all'evento. */
+    public static function volontari_for_event( int $evento_id ): array {
+        global $wpdb;
+        $tv = Schema::table_volontari();
+        $te = Schema::table_volontari_eventi();
+        return (array) $wpdb->get_results( $wpdb->prepare(
+            "SELECT v.* FROM $te e JOIN $tv v ON v.id = e.volontario_id WHERE e.evento_id = %d ORDER BY v.cognome ASC, v.nome ASC", $evento_id ), ARRAY_A );
+    }
+
+    /** @return int[] id volontario già presenti nell'evento. */
+    public static function ids_in_event( int $evento_id ): array {
+        global $wpdb;
+        $te = Schema::table_volontari_eventi();
+        return array_map( 'intval', (array) $wpdb->get_col( $wpdb->prepare( "SELECT volontario_id FROM $te WHERE evento_id = %d", $evento_id ) ) );
+    }
+
+    public static function add_to_event( int $volontario_id, int $evento_id ): void {
+        global $wpdb;
+        $wpdb->query( $wpdb->prepare(
+            'INSERT IGNORE INTO ' . Schema::table_volontari_eventi() . ' (volontario_id, evento_id, created_by) VALUES (%d, %d, %d)',
+            $volontario_id, $evento_id, get_current_user_id() ) );
+        self::log_audit( $volontario_id, 'evento_add', [ 'evento_id' => $evento_id ] );
+    }
+
+    public static function remove_from_event( int $volontario_id, int $evento_id ): void {
+        global $wpdb;
+        $wpdb->delete( Schema::table_volontari_eventi(), [ 'volontario_id' => $volontario_id, 'evento_id' => $evento_id ] );
+        self::log_audit( $volontario_id, 'evento_remove', [ 'evento_id' => $evento_id ] );
+    }
+
     // --- Scrittura ---------------------------------------------------------
 
     /** Normalizza i dati dal $_POST. */
@@ -113,6 +185,7 @@ class Volontari {
         if ( $err ) { return new \WP_Error( 'invalid', $err ); }
 
         $d['created_by'] = get_current_user_id();
+        $d['n_registro'] = self::next_n_registro();
         $ok = $wpdb->insert( Schema::table_volontari(), $d );
         if ( ! $ok ) { return new \WP_Error( 'db', 'Inserimento non riuscito.' ); }
         $id = (int) $wpdb->insert_id;
@@ -201,20 +274,30 @@ class Volontari {
         if ( ! self::can_manage() ) { wp_die( 'Permesso negato.' ); }
         check_admin_referer( 'gfoss_volontari_pdf' );
 
-        $ids = array_map( 'absint', (array) ( $_POST['ids'] ?? [] ) );
-        $manifestazione = sanitize_text_field( wp_unslash( $_POST['manifestazione'] ?? '' ) );
-        $data_manif     = self::clean_date( (string) ( $_POST['data_manifestazione'] ?? '' ) );
-
-        $rows = [];
-        foreach ( $ids as $id ) {
-            $r = self::get( $id );
-            if ( $r ) { $rows[] = $r; }
+        $evento_id = (int) ( $_POST['evento_id'] ?? 0 );
+        if ( $evento_id ) {
+            $rows           = self::volontari_for_event( $evento_id );
+            $em             = self::event_meta( $evento_id );
+            $manifestazione = $em['titolo'];
+            $data_label     = self::format_periodo( $em['inizio'], $em['fine'] );
+            $fname_date     = $em['inizio'] ? substr( $em['inizio'], 0, 10 ) : current_time( 'Y-m-d' );
+        } else {
+            $ids            = array_map( 'absint', (array) ( $_POST['ids'] ?? [] ) );
+            $manifestazione = sanitize_text_field( wp_unslash( $_POST['manifestazione'] ?? '' ) );
+            $dm             = self::clean_date( (string) ( $_POST['data_manifestazione'] ?? '' ) );
+            $data_label     = $dm ? date_i18n( 'd/m/Y', strtotime( $dm ) ) : '';
+            $fname_date     = $dm ?: current_time( 'Y-m-d' );
+            $rows = [];
+            foreach ( $ids as $id ) {
+                $r = self::get( $id );
+                if ( $r ) { $rows[] = $r; }
+            }
         }
         if ( ! $rows ) {
             wp_safe_redirect( add_query_arg( 'msg', 'pdf_empty', wp_get_referer() ) ); exit;
         }
 
-        $pdf = self::generate_pdf( $rows, $manifestazione, $data_manif );
+        $pdf = self::generate_pdf( $rows, $manifestazione, $data_label );
         if ( $pdf instanceof \WP_Error ) {
             wp_safe_redirect( add_query_arg( 'msg', 'pdf_err', wp_get_referer() ) ); exit;
         }
@@ -222,12 +305,13 @@ class Volontari {
         // Audit: registrazione dell'avvenuta generazione dell'elenco (data certa).
         self::log_audit( 0, 'export_pdf', [
             'manifestazione' => $manifestazione,
-            'data'           => $data_manif,
+            'data'           => $data_label,
+            'evento_id'      => $evento_id,
             'volontari'      => count( $rows ),
             'hash'           => self::hash_rows( $rows ),
         ] );
 
-        $fname = 'registro-volontari-' . ( $data_manif ?: current_time( 'Y-m-d' ) ) . '.pdf';
+        $fname = 'registro-volontari-' . $fname_date . '.pdf';
         header( 'Content-Type: application/pdf' );
         header( 'Content-Disposition: attachment; filename="' . $fname . '"' );
         header( 'Content-Length: ' . strlen( $pdf ) );
@@ -237,7 +321,7 @@ class Volontari {
     }
 
     /** @return string PDF binario o WP_Error. */
-    public static function generate_pdf( array $rows, string $manifestazione, ?string $data_manif ): string|\WP_Error {
+    public static function generate_pdf( array $rows, string $manifestazione, ?string $data_label ): string|\WP_Error {
         if ( ! class_exists( '\\Mpdf\\Mpdf' ) ) {
             $autoload = GFOSS_MEMBERS_DIR . 'vendor/autoload.php';
             if ( is_file( $autoload ) ) { require_once $autoload; }
@@ -248,7 +332,7 @@ class Volontari {
 
         $hash    = self::hash_rows( $rows );
         $emesso  = date_i18n( 'd/m/Y H:i' );
-        $html    = self::render_html( $rows, $manifestazione, $data_manif, $hash, $emesso );
+        $html    = self::render_html( $rows, $manifestazione, $data_label, $hash, $emesso );
 
         try {
             $tmp = WP_CONTENT_DIR . '/uploads/gfoss-tmp';
@@ -283,7 +367,7 @@ class Volontari {
         return is_file( $theme ) ? $theme : '';
     }
 
-    private static function render_html( array $rows, string $manifestazione, ?string $data_manif, string $hash, string $emesso ): string {
+    private static function render_html( array $rows, string $manifestazione, ?string $data_label, string $hash, string $emesso ): string {
         $e   = static fn( $v ) => esc_html( (string) $v );
         $cf_assoc = defined( 'GFOSS_ASSOC_CF' ) ? GFOSS_ASSOC_CF : '95090860131';
         $logo     = self::logo_path();
@@ -308,7 +392,7 @@ class Volontari {
         }
 
         $sub = $manifestazione
-            ? 'Manifestazione: <strong>' . $e( $manifestazione ) . '</strong>' . ( $data_manif ? ' &middot; ' . $fmt( $data_manif ) : '' )
+            ? 'Manifestazione: <strong>' . $e( $manifestazione ) . '</strong>' . ( $data_label ? ' &middot; ' . $e( $data_label ) : '' )
             : 'Elenco generale dei volontari';
 
         return '

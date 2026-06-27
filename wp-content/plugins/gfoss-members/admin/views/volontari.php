@@ -18,13 +18,27 @@ if ( ! empty( $_POST['_action'] ) ) {
     check_admin_referer( 'gfoss_volontari' );
     $action = sanitize_key( (string) $_POST['_action'] );
 
+    $ev_ctx = (int) ( $_POST['evento_id'] ?? 0 );
+    $back   = $ev_ctx ? add_query_arg( 'evento', $ev_ctx, $base_url ) : $base_url;
+
     if ( $action === 'save' ) {
         $id  = (int) ( $_POST['id'] ?? 0 );
         $res = $id ? Volontari::update( $id, $_POST ) : Volontari::insert( $_POST );
         if ( is_wp_error( $res ) ) {
-            wp_safe_redirect( add_query_arg( [ 'msg' => 'err', 'err' => rawurlencode( $res->get_error_message() ) ], $base_url ) ); exit;
+            wp_safe_redirect( add_query_arg( [ 'msg' => 'err', 'err' => rawurlencode( $res->get_error_message() ) ], $back ) ); exit;
         }
-        wp_safe_redirect( add_query_arg( 'msg', $id ? 'updated' : 'created', $base_url ) ); exit;
+        // Se inserito nel contesto di un evento, collegalo automaticamente alla sua lista.
+        if ( ! $id && $ev_ctx ) { Volontari::add_to_event( (int) $res, $ev_ctx ); }
+        wp_safe_redirect( add_query_arg( 'msg', $id ? 'updated' : 'created', $back ) ); exit;
+    }
+    if ( $action === 'event_add' ) {
+        $ids = array_map( 'absint', (array) ( $_POST['ids'] ?? [] ) );
+        foreach ( $ids as $vid ) { if ( $vid && $ev_ctx ) { Volontari::add_to_event( $vid, $ev_ctx ); } }
+        wp_safe_redirect( add_query_arg( [ 'evento' => $ev_ctx, 'msg' => 'event_added' ], $base_url ) ); exit;
+    }
+    if ( $action === 'event_remove' ) {
+        Volontari::remove_from_event( (int) ( $_POST['id'] ?? 0 ), $ev_ctx );
+        wp_safe_redirect( add_query_arg( [ 'evento' => $ev_ctx, 'msg' => 'event_removed' ], $base_url ) ); exit;
     }
     if ( $action === 'cessa' ) {
         Volontari::cessa( (int) ( $_POST['id'] ?? 0 ), (string) ( $_POST['data_cessazione'] ?? '' ) );
@@ -62,6 +76,14 @@ foreach ( $soci as $s ) {
 }
 $card   = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px;margin-bottom:20px';
 $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) ) : '—';
+
+// Contesto "lista per evento".
+$eventi    = Volontari::eventi_list();
+$ev_sel    = (int) ( $_GET['evento'] ?? 0 );
+$ev_meta   = $ev_sel ? Volontari::event_meta( $ev_sel ) : null;
+$ev_membri = $ev_sel ? Volontari::volontari_for_event( $ev_sel ) : [];
+$ev_ids    = $ev_sel ? Volontari::ids_in_event( $ev_sel ) : [];
+$attivi    = array_filter( $lista, static fn( $v ) => empty( $v['data_cessazione'] ) );
 ?>
 <div class="wrap">
     <h1>Registro volontari</h1>
@@ -71,14 +93,16 @@ $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) )
         <summary style="cursor:pointer;font-weight:600;font-size:14px">📖 Come funziona il registro volontari (guida)</summary>
         <div style="margin-top:12px;font-size:13px;line-height:1.6;color:#3a4a55">
             <p><strong>A cosa serve.</strong> È il registro dei volontari previsto dall'art. 17 del D.Lgs. 117/2017, necessario per la <strong>copertura assicurativa obbligatoria</strong> (art. 18). Va tenuto a cura del Consiglio Direttivo.</p>
-            <p><strong>Chi va inserito.</strong> Solo chi opera effettivamente nelle manifestazioni pubbliche: i soci “soliti noti” (continuativi) e gli eventuali <strong>occasionali, anche non soci</strong>. <em>Non</em> tutti i soci. Ricorda: l'assicurazione deve coprire anche gli occasionali, quindi meglio abbondare nelle coperture rispetto ai nominativi.</p>
+            <p><strong>Due livelli.</strong> Il <strong>registro</strong> (in basso) è il documento persistente e numerato dei volontari non occasionali (i “soliti noti”); resta nel tempo, con numero progressivo, data inizio e cessazione. Le <strong>liste per evento</strong> (in alto) sono gli estratti per ogni manifestazione, da cui generi il PDF per l'assicurazione.</p>
+            <p><strong>Chi va inserito.</strong> Nel registro: chi opera in modo continuativo. Nelle liste evento: i presenti a quella manifestazione, inclusi <strong>occasionali anche non soci</strong>. <em>Non</em> tutti i soci. Ricorda: l'assicurazione deve coprire anche gli occasionali, quindi meglio abbondare nelle coperture rispetto ai nominativi.</p>
             <p><strong>Dati minimi richiesti.</strong> Codice fiscale <em>oppure</em>, in alternativa, generalità complete (nome, cognome, luogo e data di nascita); residenza o domicilio; data di inizio e di cessazione dell'attività.</p>
             <p><strong>Cessazione.</strong> Una persona non si “cancella”: si imposta la <strong>data di cessazione</strong> (pulsante <em>Cessa</em>). La riga resta nel registro e nello storico.</p>
             <p><strong>Inalterabilità.</strong> Ogni inserimento/modifica/cessazione è registrato nell'<strong>audit log</strong> (chi, cosa, quando) e la tabella usa il <em>system versioning</em> del database: nessun dato viene perso.</p>
             <p style="margin-bottom:0"><strong>Workflow “data certa” prima di una manifestazione:</strong></p>
             <ol style="margin-top:4px">
-                <li>Aggiorna il registro (aggiungi i presenti, anche occasionali).</li>
-                <li>Premi <strong>Genera PDF</strong>: ottieni l'elenco con logo GFOSS e <strong>impronta SHA-256</strong> dei dati.</li>
+                <li>In <strong>“Liste volontari per evento”</strong> scegli l'evento (anche multi-giorno).</li>
+                <li>Componi la lista: <em>Aggiungi dal registro</em> i continuativi e inserisci eventuali occasionali col form (vengono collegati all'evento).</li>
+                <li>Premi <strong>Genera PDF evento</strong>: ottieni l'elenco con logo GFOSS, titolo/date dell'evento e <strong>impronta SHA-256</strong> dei dati.</li>
                 <li>Riporta il PDF e il suo hash in un <strong>verbale del Consiglio Direttivo</strong>.</li>
                 <li>Invia il tutto via <strong>PEC</strong> a voi stessi → questo dà <em>data certa</em> opponibile a terzi (assicurazione, Agenzia Entrate).</li>
                 <li>Conserva il PDF firmato (firma del Presidente) nel faldone insieme a registro soci e verbali.</li>
@@ -87,7 +111,7 @@ $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) )
     </details>
 
     <?php
-    $notes = [ 'created' => 'Volontario inserito nel registro.', 'updated' => 'Dati aggiornati.', 'cessato' => 'Cessazione registrata.', 'riattivato' => 'Volontario riattivato.', 'pdf_empty' => 'Seleziona almeno un volontario per il PDF.', 'pdf_err' => 'Errore nella generazione del PDF (mPDF installato?).' ];
+    $notes = [ 'created' => 'Volontario inserito nel registro.', 'updated' => 'Dati aggiornati.', 'cessato' => 'Cessazione registrata.', 'riattivato' => 'Volontario riattivato.', 'pdf_empty' => 'Seleziona almeno un volontario per il PDF.', 'pdf_err' => 'Errore nella generazione del PDF (mPDF installato?).', 'event_added' => 'Volontari aggiunti alla lista dell\'evento.', 'event_removed' => 'Volontario rimosso dalla lista dell\'evento.' ];
     if ( isset( $notes[ $msg ] ) ) {
         $cls = in_array( $msg, [ 'pdf_empty', 'pdf_err', 'err' ], true ) ? 'error' : 'success';
         echo '<div class="notice notice-' . esc_attr( $cls ) . ' is-dismissible"><p>' . esc_html( $notes[ $msg ] ) . '</p></div>';
@@ -97,13 +121,96 @@ $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) )
     }
     ?>
 
+    <!-- LISTE PER EVENTO -->
+    <div class="card" style="<?php echo $card; ?>">
+        <h2 style="margin-top:0">Liste volontari per evento</h2>
+        <p class="description">Per ogni manifestazione (anche di più giorni) componi la lista dei presenti — necessaria per l'assicurazione — e generane il PDF datato con hash. È un <em>estratto</em> del registro: i dati restano sempre nel registro persistente qui sotto.</p>
+        <p>
+            <label><strong>Evento:</strong>
+            <select onchange="location.href='<?php echo esc_url( $base_url ); ?>'+(this.value?'&evento='+this.value:'')" style="min-width:340px">
+                <option value="">— scegli un evento —</option>
+                <?php foreach ( $eventi as $ev ) :
+                    $em = Volontari::event_meta( $ev->ID );
+                    $lbl = $ev->post_title . ( $em['inizio'] ? ' (' . esc_html( Volontari::format_periodo( $em['inizio'], $em['fine'] ) ) . ')' : '' ); ?>
+                    <option value="<?php echo (int) $ev->ID; ?>" <?php selected( $ev_sel, $ev->ID ); ?>><?php echo esc_html( $lbl ); ?></option>
+                <?php endforeach; ?>
+            </select></label>
+            <?php if ( ! $eventi ) : ?><span class="description">Nessun evento creato. Crea prima un evento in <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . Eventi::CPT ) ); ?>">Eventi</a>.</span><?php endif; ?>
+        </p>
+
+        <?php if ( $ev_sel && $ev_meta ) : ?>
+            <hr>
+            <h3 style="margin-bottom:.2rem"><?php echo esc_html( $ev_meta['titolo'] ); ?></h3>
+            <p class="description"><?php echo esc_html( Volontari::format_periodo( $ev_meta['inizio'], $ev_meta['fine'] ) ); ?><?php echo $ev_meta['luogo'] ? ' · ' . esc_html( $ev_meta['luogo'] ) : ''; ?> — <strong><?php echo count( $ev_membri ); ?></strong> volontari in lista</p>
+
+            <table class="widefat striped" style="margin-bottom:14px">
+                <thead><tr><th>N.</th><th>Cognome e nome</th><th>CF / Nascita</th><th>Tipo</th><th></th></tr></thead>
+                <tbody>
+                <?php if ( ! $ev_membri ) : ?>
+                    <tr><td colspan="5">Nessun volontario in questa lista. Aggiungili qui sotto.</td></tr>
+                <?php else : foreach ( $ev_membri as $v ) : ?>
+                    <tr>
+                        <td><?php echo $v['n_registro'] ? '#' . (int) $v['n_registro'] : '—'; ?></td>
+                        <td><strong><?php echo esc_html( $v['cognome'] . ' ' . $v['nome'] ); ?></strong></td>
+                        <td><?php echo $v['codice_fiscale'] ? '<code>' . esc_html( $v['codice_fiscale'] ) . '</code>' : esc_html( trim( $v['luogo_nascita'] . ' ' . $fmt( $v['data_nascita'] ) ) ?: '—' ); ?></td>
+                        <td><?php echo $v['tipo'] === 'occasionale' ? 'Occasionale' : 'Continuativo'; ?></td>
+                        <td>
+                            <form method="post" style="display:inline">
+                                <?php wp_nonce_field( 'gfoss_volontari' ); ?>
+                                <input type="hidden" name="_action" value="event_remove">
+                                <input type="hidden" name="evento_id" value="<?php echo (int) $ev_sel; ?>">
+                                <input type="hidden" name="id" value="<?php echo (int) $v['id']; ?>">
+                                <button class="button button-small">Rimuovi</button>
+                            </form>
+                        </td>
+                    </tr>
+                <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+
+            <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start">
+                <!-- aggiungi dal registro -->
+                <form method="post" style="flex:1;min-width:280px">
+                    <?php wp_nonce_field( 'gfoss_volontari' ); ?>
+                    <input type="hidden" name="_action" value="event_add">
+                    <input type="hidden" name="evento_id" value="<?php echo (int) $ev_sel; ?>">
+                    <h4 style="margin:.2rem 0">Aggiungi dal registro</h4>
+                    <?php
+                    $disponibili = array_filter( $attivi, static fn( $v ) => ! in_array( (int) $v['id'], $ev_ids, true ) );
+                    if ( ! $disponibili ) : ?>
+                        <p class="description">Tutti i volontari attivi del registro sono già in lista.</p>
+                    <?php else : ?>
+                        <div style="max-height:200px;overflow:auto;border:1px solid #e2e8ec;border-radius:6px;padding:8px">
+                            <?php foreach ( $disponibili as $v ) : ?>
+                                <label style="display:block"><input type="checkbox" name="ids[]" value="<?php echo (int) $v['id']; ?>"> <?php echo esc_html( $v['cognome'] . ' ' . $v['nome'] ); ?></label>
+                            <?php endforeach; ?>
+                        </div>
+                        <p><button class="button button-primary">Aggiungi selezionati</button></p>
+                    <?php endif; ?>
+                </form>
+
+                <!-- genera PDF dell'evento -->
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="flex:1;min-width:280px">
+                    <input type="hidden" name="action" value="gfoss_volontari_pdf">
+                    <input type="hidden" name="evento_id" value="<?php echo (int) $ev_sel; ?>">
+                    <?php wp_nonce_field( 'gfoss_volontari_pdf' ); ?>
+                    <h4 style="margin:.2rem 0">Documento per l'assicurazione</h4>
+                    <p class="description">Genera il PDF della lista di questo evento con logo, impronta SHA-256 e spazio firma del Presidente.</p>
+                    <p><button class="button button-primary" <?php disabled( ! $ev_membri ); ?>>⬇ Genera PDF evento</button></p>
+                </form>
+            </div>
+            <p class="description" style="margin-top:8px">Per aggiungere un <strong>occasionale non socio</strong> a questo evento: compila il form qui sotto (verrà collegato automaticamente all'evento selezionato).</p>
+        <?php endif; ?>
+    </div>
+
     <!-- FORM INSERIMENTO / MODIFICA -->
     <div class="card" style="<?php echo $card; ?>;max-width:920px">
-        <h2 style="margin-top:0"><?php echo $editing ? 'Modifica volontario' : 'Aggiungi volontario'; ?></h2>
+        <h2 style="margin-top:0"><?php echo $editing ? 'Modifica volontario' : 'Aggiungi volontario al registro'; ?><?php echo ( $ev_sel && ! $editing ) ? ' <span style="font-weight:400;font-size:13px;color:#2271b1">(→ verrà aggiunto anche all\'evento selezionato)</span>' : ''; ?></h2>
         <form method="post">
             <?php wp_nonce_field( 'gfoss_volontari' ); ?>
             <input type="hidden" name="_action" value="save">
             <?php if ( $editing ) : ?><input type="hidden" name="id" value="<?php echo (int) $editing['id']; ?>"><?php endif; ?>
+            <?php if ( $ev_sel && ! $editing ) : ?><input type="hidden" name="evento_id" value="<?php echo (int) $ev_sel; ?>"><?php endif; ?>
 
             <table class="form-table" role="presentation">
                 <tr>
@@ -168,13 +275,14 @@ $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) )
     <div class="card" style="<?php echo $card; ?>">
         <h2 style="margin-top:0">Volontari iscritti (<?php echo count( $lista ); ?>) · attivi: <?php echo Volontari::count_attivi(); ?></h2>
         <table class="widefat striped">
-            <thead><tr><th>Cognome e nome</th><th>CF / Nascita</th><th>Residenza</th><th>Tipo</th><th>Inizio</th><th>Cessazione</th><th>Stato</th><th></th></tr></thead>
+            <thead><tr><th>N.</th><th>Cognome e nome</th><th>CF / Nascita</th><th>Residenza</th><th>Tipo</th><th>Inizio</th><th>Cessazione</th><th>Stato</th><th></th></tr></thead>
             <tbody>
             <?php if ( ! $lista ) : ?>
-                <tr><td colspan="8">Nessun volontario nel registro.</td></tr>
+                <tr><td colspan="9">Nessun volontario nel registro.</td></tr>
             <?php else : foreach ( $lista as $v ) :
                 $attivo = empty( $v['data_cessazione'] ); ?>
                 <tr>
+                    <td><?php echo $v['n_registro'] ? '#' . (int) $v['n_registro'] : '—'; ?></td>
                     <td><strong><?php echo esc_html( $v['cognome'] . ' ' . $v['nome'] ); ?></strong></td>
                     <td><?php echo $v['codice_fiscale'] ? '<code>' . esc_html( $v['codice_fiscale'] ) . '</code>' : esc_html( trim( $v['luogo_nascita'] . ' ' . $fmt( $v['data_nascita'] ) ) ?: '—' ); ?></td>
                     <td><?php echo esc_html( trim( $v['citta'] . ( $v['provincia'] ? ' (' . $v['provincia'] . ')' : '' ) ) ?: '—' ); ?></td>
@@ -206,8 +314,8 @@ $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) )
 
     <!-- GENERA ELENCO PDF (data certa) -->
     <div class="card" style="<?php echo $card; ?>;max-width:920px">
-        <h2 style="margin-top:0">Genera elenco PDF per manifestazione</h2>
-        <p class="description">Seleziona i volontari presenti, indica la manifestazione e genera il PDF con impronta SHA-256. Poi mettilo a verbale e invialo via PEC per la data certa.</p>
+        <h2 style="margin-top:0">Genera elenco PDF generale (senza evento)</h2>
+        <p class="description">Per un elenco non legato a un evento specifico (es. registro completo). Per le manifestazioni usa invece la sezione <strong>“Liste volontari per evento”</strong> qui sopra. Il PDF include impronta SHA-256: mettilo a verbale e invialo via PEC per la data certa.</p>
         <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
             <input type="hidden" name="action" value="gfoss_volontari_pdf">
             <?php wp_nonce_field( 'gfoss_volontari_pdf' ); ?>

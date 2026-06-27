@@ -23,8 +23,9 @@ class Schema {
     public static function table_candidatura(): string { global $wpdb; return $wpdb->prefix . 'gfoss_candidatura'; }
     public static function table_donazioni(): string   { global $wpdb; return $wpdb->prefix . 'gfoss_donazioni'; }
     public static function table_voti(): string        { global $wpdb; return $wpdb->prefix . 'gfoss_sondaggio_voti'; }
-    public static function table_volontari(): string       { global $wpdb; return $wpdb->prefix . 'gfoss_volontari'; }
-    public static function table_volontari_audit(): string { global $wpdb; return $wpdb->prefix . 'gfoss_volontari_audit'; }
+    public static function table_volontari(): string        { global $wpdb; return $wpdb->prefix . 'gfoss_volontari'; }
+    public static function table_volontari_audit(): string  { global $wpdb; return $wpdb->prefix . 'gfoss_volontari_audit'; }
+    public static function table_volontari_eventi(): string { global $wpdb; return $wpdb->prefix . 'gfoss_volontari_eventi'; }
 
     public static function maybe_upgrade(): void {
         if ( get_option( 'gfoss_members_db_version' ) !== GFOSS_MEMBERS_DB_VER ) {
@@ -152,13 +153,28 @@ class Schema {
             KEY azione (azione)
         ) $charset;";
 
+        // Liste volontari per evento (collegamento volontario ↔ evento).
+        $t_veve = self::table_volontari_eventi();
+        $sql_veve = "CREATE TABLE $t_veve (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            volontario_id BIGINT UNSIGNED NOT NULL,
+            evento_id BIGINT UNSIGNED NOT NULL,
+            created_by BIGINT UNSIGNED NULL DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uniq_vol_evento (volontario_id, evento_id),
+            KEY evento_id (evento_id)
+        ) $charset;";
+
         dbDelta( $sql_quote );
         dbDelta( $sql_cand );
         dbDelta( $sql_don );
         dbDelta( $sql_voti );
         dbDelta( $sql_vaud );
+        dbDelta( $sql_veve );
 
         self::install_volontari();
+        self::migrate_volontari();
 
         update_option( 'gfoss_members_db_version', GFOSS_MEMBERS_DB_VER, false );
     }
@@ -177,6 +193,7 @@ class Schema {
         $charset = $wpdb->get_charset_collate();
         $cols = "
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            n_registro INT UNSIGNED NULL DEFAULT NULL,
             user_id BIGINT UNSIGNED NULL DEFAULT NULL,
             nome VARCHAR(120) NOT NULL,
             cognome VARCHAR(120) NOT NULL,
@@ -201,6 +218,20 @@ class Schema {
         $ok = $wpdb->query( "CREATE TABLE IF NOT EXISTS $t ( $cols ) $charset WITH SYSTEM VERSIONING" );
         if ( $ok === false ) {
             $wpdb->query( "CREATE TABLE IF NOT EXISTS $t ( $cols ) $charset" );
+        }
+    }
+
+    /** Migrazioni in-place sulla tabella volontari (colonne aggiunte dopo la v1). */
+    private static function migrate_volontari(): void {
+        global $wpdb;
+        $t = self::table_volontari();
+        if ( (string) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $t ) ) !== $t ) { return; }
+        $has = $wpdb->get_var( "SHOW COLUMNS FROM $t LIKE 'n_registro'" );
+        if ( ! $has ) {
+            // Le tabelle system-versioned vietano gli ALTER finché non si consente
+            // di mantenere lo storico durante la modifica dello schema.
+            $wpdb->query( 'SET @@system_versioning_alter_history = KEEP' );
+            $wpdb->query( "ALTER TABLE $t ADD COLUMN n_registro INT UNSIGNED NULL DEFAULT NULL AFTER id" );
         }
     }
 }
