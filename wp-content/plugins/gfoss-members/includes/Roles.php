@@ -25,6 +25,7 @@ class Roles {
     public const CAP_MANAGE_QUOTE         = 'gfoss_manage_quote';
     public const CAP_EXPORT_REGISTRO      = 'gfoss_export_registro';
     public const CAP_MANAGE_ASSEMBLEE     = 'gfoss_manage_assemblee';
+    public const CAP_MANAGE_VOLONTARI     = 'gfoss_manage_volontari';
 
     public const CAP_VIEW_ACCOUNTING      = 'gfoss_view_accounting';
     public const CAP_MANAGE_ACCOUNTING    = 'gfoss_manage_accounting';
@@ -128,6 +129,7 @@ class Roles {
             self::CAP_MANAGE_SOCI           => true,
             self::CAP_EXPORT_REGISTRO       => true,
             self::CAP_VIEW_ACCOUNTING       => true,
+            self::CAP_MANAGE_VOLONTARI      => true,
         ];
     }
 
@@ -137,6 +139,7 @@ class Roles {
             self::CAP_VIEW_ACCOUNTING       => true,
             self::CAP_MANAGE_ACCOUNTING     => true,
             self::CAP_EXPORT_REGISTRO       => true,
+            self::CAP_MANAGE_VOLONTARI      => true,
         ];
     }
 
