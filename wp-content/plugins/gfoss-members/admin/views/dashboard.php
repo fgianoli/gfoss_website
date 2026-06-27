@@ -66,7 +66,7 @@ for ( $y = $year; $y > $year - 6; $y-- ) {
             <p style="margin:.25rem 0 0;font-size:2rem;font-weight:700;"><?php echo esc_html( (string) $nuovi ); ?></p>
         </div>
         <div class="card" style="padding:16px;background:#fff;border:1px solid #e2e8ec;border-radius:8px;">
-            <p style="margin:0;color:#4A5C6A;text-transform:uppercase;font-size:12px;letter-spacing:.04em"><?php esc_html_e( 'Volontari', 'gfoss-members' ); ?></p>
+            <p style="margin:0;color:#4A5C6A;text-transform:uppercase;font-size:12px;letter-spacing:.04em"><?php esc_html_e( 'Disponibili volontariato', 'gfoss-members' ); ?></p>
             <p style="margin:.25rem 0 0;font-size:2rem;font-weight:700;color:#5DA34D;"><?php echo esc_html( (string) $volontari ); ?></p>
         </div>
     </div>

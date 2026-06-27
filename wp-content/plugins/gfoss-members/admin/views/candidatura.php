@@ -65,7 +65,7 @@ $can_review = current_user_can( Roles::CAP_REVIEW_CANDIDATURE );
                     <tr><th>Professione</th><td><?php echo esc_html( (string) $cand['professione'] ); ?></td></tr>
                     <tr><th>Competenze</th><td><?php echo nl2br( esc_html( (string) $cand['competenze'] ) ); ?></td></tr>
                     <tr><th>Motivazione</th><td><?php echo nl2br( esc_html( (string) $cand['motivazione'] ) ); ?></td></tr>
-                    <tr><th>Volontario</th><td><?php echo $cand['volontario'] ? '✓ Sì (registro volontari art. 18)' : 'No'; ?></td></tr>
+                    <tr><th>Disponibile a volontariato</th><td><?php echo $cand['volontario'] ? '✓ Sì' : 'No'; ?></td></tr>
                     <tr><th>Consensi</th><td>Statuto: <?php echo $cand['consenso_statuto'] ? '✓' : '✗'; ?> · Privacy: <?php echo $cand['consenso_privacy'] ? '✓' : '✗'; ?></td></tr>
                     <tr><th>IP / data invio</th><td><code><?php echo esc_html( (string) $cand['ip'] ); ?></code> · <?php echo esc_html( mysql2date( 'd/m/Y H:i', $cand['created_at'] ) ); ?></td></tr>
                 </tbody>

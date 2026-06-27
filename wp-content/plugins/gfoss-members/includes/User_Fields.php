@@ -20,7 +20,7 @@ class User_Fields {
         'gf_telefono'         => 'Telefono',
         'gf_professione'      => 'Professione',
         'gf_competenze'       => 'Aree di competenza',
-        'gf_volontario'       => 'Iscritto registro volontari (0/1)',
+        'gf_volontario'       => 'Disponibile a volontariato (0/1)',
         'gf_data_ammissione'  => 'Data ammissione (YYYY-MM-DD)',
         'gf_numero_socio'     => 'Numero socio',
         'gf_note_interne'     => 'Note interne (solo CD)',
@@ -51,7 +51,7 @@ class User_Fields {
                                       rows="3" class="regular-text"><?php echo esc_textarea( $value ); ?></textarea>
                         <?php elseif ( $key === 'gf_volontario' ) : ?>
                             <label><input type="checkbox" name="<?php echo esc_attr( $key ); ?>" value="1" <?php checked( $value, '1' ); ?>>
-                                <?php esc_html_e( 'Sì, iscritto registro volontari (art. 18 Statuto)', 'gfoss-members' ); ?></label>
+                                <?php esc_html_e( 'Sì, disponibile a svolgere attività di volontariato', 'gfoss-members' ); ?></label>
                         <?php else : ?>
                             <input type="text" id="<?php echo esc_attr( $key ); ?>" name="<?php echo esc_attr( $key ); ?>"
                                    value="<?php echo esc_attr( $value ); ?>" class="regular-text">

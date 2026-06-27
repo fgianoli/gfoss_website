@@ -118,7 +118,8 @@ class Form {
                     <?php self::textarea( 'motivazione', 'Perché vuoi iscriverti? (facoltativo)', $values, $errors ); ?>
                     <label class="gf-check gf-col-2">
                         <input type="checkbox" name="volontario" value="1" <?php checked( ! empty( $values['volontario'] ) ); ?>>
-                        Desidero essere iscritto anche al <strong>registro volontari</strong> (art. 18 Statuto) e svolgere attività di volontariato gratuito per l'associazione.
+                        Desidero rendermi disponibile a svolgere attività di volontariato per GFOSS.it APS.
+                        <small class="gf-muted" style="display:block">L'eventuale iscrizione al registro dei volontari (a fini assicurativi) avviene a cura del Consiglio Direttivo solo per chi opera effettivamente nelle manifestazioni.</small>
                     </label>
                 </div>
             </fieldset>

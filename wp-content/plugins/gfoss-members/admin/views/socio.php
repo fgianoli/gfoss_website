@@ -121,7 +121,7 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
                 <input type="hidden" name="_action" value="save_meta">
                 <p><label><strong>Numero socio</strong><br>
                     <input type="text" name="gf_numero_socio" value="<?php echo esc_attr( $numero ); ?>" placeholder="es. <?php echo esc_attr( $year ); ?>-00001"></label></p>
-                <p><label><input type="checkbox" name="gf_volontario" value="1" <?php checked( get_user_meta( $uid, 'gf_volontario', true ), '1' ); ?>> Iscritto al registro volontari</label></p>
+                <p><label><input type="checkbox" name="gf_volontario" value="1" <?php checked( get_user_meta( $uid, 'gf_volontario', true ), '1' ); ?>> Disponibile ad attività di volontariato</label></p>
                 <button type="submit" class="button">Salva dati</button>
             </form>
 

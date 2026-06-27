@@ -306,7 +306,7 @@ class Area_Personale {
                             </label>
                             <label class="gf-check gf-col-2">
                                 <input type="checkbox" name="gf_volontario" value="1" <?php checked( get_user_meta( $user->ID, 'gf_volontario', true ), '1' ); ?>>
-                                Sono iscritto/a al registro volontari (art. 18 Statuto)
+                                Sono disponibile a svolgere attività di volontariato per GFOSS.it APS
                             </label>
                             <label class="gf-check gf-col-2">
                                 <input type="checkbox" name="gf_mappa_consenso" value="1" <?php checked( get_user_meta( $user->ID, 'gf_mappa_consenso', true ), '1' ); ?>>
