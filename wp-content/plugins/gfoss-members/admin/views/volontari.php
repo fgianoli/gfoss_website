@@ -40,28 +40,26 @@ $msg     = sanitize_key( (string) ( $_GET['msg'] ?? '' ) );
 $edit_id = (int) ( $_GET['edit'] ?? 0 );
 $editing = $edit_id ? Volontari::get( $edit_id ) : null;
 
-// Prefill anagrafica da un socio esistente (?from_user=ID).
-$prefill = [];
-$from_user = (int) ( $_GET['from_user'] ?? 0 );
-if ( $from_user && ! $editing ) {
-    $fu = get_userdata( $from_user );
-    if ( $fu ) {
-        $prefill = [
-            'user_id'        => $from_user,
-            'nome'           => $fu->first_name,
-            'cognome'        => $fu->last_name,
-            'codice_fiscale' => get_user_meta( $from_user, 'gf_codice_fiscale', true ),
-            'indirizzo'      => get_user_meta( $from_user, 'gf_indirizzo', true ),
-            'cap'            => get_user_meta( $from_user, 'gf_cap', true ),
-            'citta'          => get_user_meta( $from_user, 'gf_citta', true ),
-            'provincia'      => get_user_meta( $from_user, 'gf_provincia', true ),
-        ];
-    }
-}
-$f = static fn( string $k, $def = '' ) => esc_attr( (string) ( $editing[ $k ] ?? $prefill[ $k ] ?? $def ) );
+$f = static fn( string $k, $def = '' ) => esc_attr( (string) ( $editing[ $k ] ?? $def ) );
 
 $lista  = Volontari::all();
 $soci   = get_users( [ 'role__in' => [ 'gfoss_socio','gfoss_consigliere','gfoss_presidente','gfoss_tesoriere','gfoss_revisore','gfoss_comunicazione','gfoss_segreteria' ], 'orderby' => 'display_name', 'order' => 'ASC' ] );
+
+// Dati dei soci per l'autocompilazione lato client del form.
+$soci_data = [];
+foreach ( $soci as $s ) {
+    $soci_data[ (int) $s->ID ] = [
+        'nome'           => $s->first_name,
+        'cognome'        => $s->last_name,
+        'codice_fiscale' => (string) get_user_meta( $s->ID, 'gf_codice_fiscale', true ),
+        'luogo_nascita'  => (string) get_user_meta( $s->ID, 'gf_comune_nascita', true ),
+        'data_nascita'   => (string) get_user_meta( $s->ID, 'gf_data_nascita', true ),
+        'indirizzo'      => (string) get_user_meta( $s->ID, 'gf_indirizzo', true ),
+        'cap'            => (string) get_user_meta( $s->ID, 'gf_cap', true ),
+        'citta'          => (string) get_user_meta( $s->ID, 'gf_citta', true ),
+        'provincia'      => (string) get_user_meta( $s->ID, 'gf_provincia', true ),
+    ];
+}
 $card   = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px;margin-bottom:20px';
 $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) ) : '—';
 ?>
@@ -109,23 +107,15 @@ $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) )
 
             <table class="form-table" role="presentation">
                 <tr>
-                    <th><label>Collega a socio</label></th>
+                    <th><label for="gfv_socio">Socio</label></th>
                     <td>
-                        <select name="user_id" style="min-width:280px">
+                        <select name="user_id" id="gfv_socio" style="min-width:340px">
                             <option value="">— occasionale / non socio —</option>
                             <?php foreach ( $soci as $s ) : ?>
                                 <option value="<?php echo (int) $s->ID; ?>" <?php selected( (int) $f( 'user_id' ), $s->ID ); ?>><?php echo esc_html( $s->display_name . ' (' . $s->user_email . ')' ); ?></option>
                             <?php endforeach; ?>
                         </select>
-                        <?php if ( ! $editing ) : ?>
-                            <p class="description">Per precompilare i dati da un socio: scegli qui sotto e ricarica.
-                            <select onchange="if(this.value)location.href='<?php echo esc_url( $base_url ); ?>&from_user='+this.value">
-                                <option value="">↳ precompila da socio…</option>
-                                <?php foreach ( $soci as $s ) : ?>
-                                    <option value="<?php echo (int) $s->ID; ?>"><?php echo esc_html( $s->display_name ); ?></option>
-                                <?php endforeach; ?>
-                            </select></p>
-                        <?php endif; ?>
+                        <p class="description">Scegli un socio per <strong>compilare automaticamente</strong> i campi qui sotto. Lascia “occasionale / non socio” per inserire una persona a mano.</p>
                     </td>
                 </tr>
                 <tr><th><label>Nome *</label></th><td><input type="text" name="nome" value="<?php echo $f( 'nome' ); ?>" required class="regular-text"></td></tr>
@@ -156,6 +146,22 @@ $fmt    = static fn( $d ) => $d ? date_i18n( 'd/m/Y', strtotime( (string) $d ) )
                 <?php if ( $editing ) : ?><a class="button" href="<?php echo esc_url( $base_url ); ?>">Annulla</a><?php endif; ?>
             </p>
         </form>
+        <script>
+        (function(){
+            var data = <?php echo wp_json_encode( $soci_data ); ?>;
+            var sel  = document.getElementById('gfv_socio');
+            if ( ! sel ) { return; }
+            sel.addEventListener('change', function(){
+                var d = data[ this.value ];
+                if ( ! d ) { return; } // "occasionale": non tocca i campi compilati a mano
+                var form = sel.closest('form');
+                ['nome','cognome','codice_fiscale','luogo_nascita','data_nascita','indirizzo','cap','citta','provincia'].forEach(function(k){
+                    var inp = form.querySelector('[name="'+k+'"]');
+                    if ( inp && d[k] ) { inp.value = d[k]; }
+                });
+            });
+        })();
+        </script>
     </div>
 
     <!-- LISTA -->
