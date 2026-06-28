@@ -115,6 +115,34 @@ class Volontari {
         return array_map( 'intval', (array) $wpdb->get_col( $wpdb->prepare( "SELECT volontario_id FROM $te WHERE evento_id = %d", $evento_id ) ) );
     }
 
+    /**
+     * Garantisce una scheda di registro per un socio: se esiste la riusa,
+     * altrimenti la crea dai dati del profilo. @return int id (0 se dati mancanti).
+     */
+    public static function ensure_from_socio( int $user_id ) {
+        global $wpdb;
+        $t = Schema::table_volontari();
+        $existing = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $t WHERE user_id = %d ORDER BY id DESC LIMIT 1", $user_id ) );
+        if ( $existing ) { return $existing; }
+        $u = get_userdata( $user_id );
+        if ( ! $u ) { return new \WP_Error( 'no_user', 'Utente non trovato.' ); }
+        $res = self::insert( [
+            'user_id'        => $user_id,
+            'nome'           => $u->first_name ?: $u->display_name,
+            'cognome'        => $u->last_name,
+            'codice_fiscale' => get_user_meta( $user_id, 'gf_codice_fiscale', true ),
+            'luogo_nascita'  => get_user_meta( $user_id, 'gf_comune_nascita', true ),
+            'data_nascita'   => get_user_meta( $user_id, 'gf_data_nascita', true ),
+            'indirizzo'      => get_user_meta( $user_id, 'gf_indirizzo', true ),
+            'cap'            => get_user_meta( $user_id, 'gf_cap', true ),
+            'citta'          => get_user_meta( $user_id, 'gf_citta', true ),
+            'provincia'      => get_user_meta( $user_id, 'gf_provincia', true ),
+            'tipo'           => 'continuativo',
+            'data_inizio'    => current_time( 'Y-m-d' ),
+        ] );
+        return $res; // int id oppure WP_Error (dati mancanti)
+    }
+
     public static function add_to_event( int $volontario_id, int $evento_id ): void {
         global $wpdb;
         $wpdb->query( $wpdb->prepare(

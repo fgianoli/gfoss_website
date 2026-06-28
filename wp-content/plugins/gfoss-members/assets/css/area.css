@@ -38,6 +38,20 @@
 .gf-tool__txt strong { font-size: .95rem; }
 .gf-tool__txt small { color: #4A5C6A; font-size: .78rem; }
 
+/* Console Registro Volontari (front-end) */
+.gf-vol .gf-card { margin-bottom: 1.1rem; }
+.gf-select {
+    width: 100%; max-width: 460px; padding: .55rem .7rem; font-size: .95rem;
+    border: 1px solid #C7D3DB; border-radius: 8px; background: #fff;
+}
+.gf-vol__evhead { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: .8rem; }
+.gf-picklist {
+    max-height: 260px; overflow: auto; border: 1px solid #E2E8EC; border-radius: 8px;
+    padding: .5rem .7rem; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .2rem;
+}
+.gf-pick { display: flex; align-items: center; gap: .45rem; padding: .15rem 0; font-size: .92rem; }
+.gf-btn--sm { padding: .3rem .7rem; font-size: .82rem; }
+
 /* Blocco connessione (spazio GIS) */
 .gf-pre {
     background: #0F2330; color: #E6F0F5; border-radius: 8px;
