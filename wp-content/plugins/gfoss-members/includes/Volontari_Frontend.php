@@ -96,8 +96,10 @@ class Volontari_Frontend {
 
         // Selettore evento
         echo '<section class="gf-card"><h2 style="margin-top:0">Scegli l\'evento</h2>';
+        $ev_page = get_posts( [ 'post_type' => 'page', 'name' => 'gestione-eventi', 'post_status' => 'publish', 'numberposts' => 1 ] );
+        $ev_url  = $ev_page ? get_permalink( $ev_page[0] ) : admin_url( 'post-new.php?post_type=' . Eventi::CPT );
         if ( ! $eventi ) {
-            echo '<p class="gf-muted">Non ci sono eventi. Crea prima un evento nella sezione Eventi del sito.</p>';
+            echo '<p class="gf-muted">Non ci sono ancora eventi.</p>';
         } else {
             echo '<select class="gf-select" onchange="location.href=location.pathname+(this.value?(\'?ev=\'+this.value):\'\')">';
             echo '<option value="">— seleziona —</option>';
@@ -107,6 +109,9 @@ class Volontari_Frontend {
                 echo '<option value="' . (int) $ev->ID . '" ' . selected( $ev_sel, $ev->ID, false ) . '>' . esc_html( $lbl ) . '</option>';
             }
             echo '</select>';
+        }
+        if ( current_user_can( 'edit_posts' ) ) {
+            echo '<p style="margin-top:.7rem"><a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( $ev_url ) . '">➕ Crea un nuovo evento</a></p>';
         }
         echo '</section>';
 

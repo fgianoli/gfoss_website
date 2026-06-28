@@ -135,7 +135,8 @@ $attivi    = array_filter( $lista, static fn( $v ) => empty( $v['data_cessazione
                     <option value="<?php echo (int) $ev->ID; ?>" <?php selected( $ev_sel, $ev->ID ); ?>><?php echo esc_html( $lbl ); ?></option>
                 <?php endforeach; ?>
             </select></label>
-            <?php if ( ! $eventi ) : ?><span class="description">Nessun evento creato. Crea prima un evento in <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=' . Eventi::CPT ) ); ?>">Eventi</a>.</span><?php endif; ?>
+            <a class="button button-small" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=' . Eventi::CPT ) ); ?>">➕ Aggiungi evento</a>
+            <?php if ( ! $eventi ) : ?><span class="description">Nessun evento creato: creane uno per iniziare.</span><?php endif; ?>
         </p>
 
         <?php if ( $ev_sel && $ev_meta ) : ?>
