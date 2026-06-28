@@ -511,6 +511,14 @@ gfoss_seed_page( 'sondaggi', 'Sondaggi', $area_id, <<<HTML
 HTML
 , 6 );
 
+// 12b-ter. Comunicazioni ai soci — invio email front-end
+gfoss_seed_page( 'comunicazioni-soci', 'Comunicazioni ai soci', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_comunicazioni_soci]
+<!-- /wp:shortcode -->
+HTML
+, 11 );
+
 // 12b-bis. Console del Direttivo — hub/cruscotto
 gfoss_seed_page( 'console', 'Console del Direttivo', $area_id, <<<HTML
 <!-- wp:shortcode -->
