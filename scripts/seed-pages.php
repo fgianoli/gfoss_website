@@ -519,6 +519,14 @@ gfoss_seed_page( 'registro-volontari', 'Registro volontari', $area_id, <<<HTML
 HTML
 , 7 );
 
+// 12d. Gestione eventi (riservata a chi pubblica) — console front-end
+gfoss_seed_page( 'gestione-eventi', 'Gestione eventi', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_gestione_eventi]
+<!-- /wp:shortcode -->
+HTML
+, 8 );
+
 // 13. Mappa soci (riservata, opt-in)
 gfoss_seed_page( 'mappa-soci', 'Mappa dei soci', $area_id, <<<HTML
 <!-- wp:paragraph --><p>I soci che hanno attivato «Localizzami in mappa» nel proprio profilo. Attiva l'opzione dalla tua <a href="/area-soci/">area personale</a> per comparire.</p><!-- /wp:paragraph -->
