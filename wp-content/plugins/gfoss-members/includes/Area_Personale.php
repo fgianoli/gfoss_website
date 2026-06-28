@@ -29,7 +29,7 @@ class Area_Personale {
             'gfoss_area_personale', 'gfoss_iscrizione_form', 'gfoss_verifica_tessera',
             'gfoss_eventi', 'gfoss_materiali', 'gfoss_mappa_soci', 'gfoss_convocazioni',
             'gfoss_documenti_riservati', 'gfoss_progetti', 'gfoss_sondaggi',
-            'gfoss_registro_volontari', 'gfoss_gestione_eventi',
+            'gfoss_registro_volontari', 'gfoss_gestione_eventi', 'gfoss_gestione_soci', 'gfoss_scrivi_news',
         ];
         foreach ( $shortcodes as $sc ) {
             if ( has_shortcode( $post->post_content, $sc ) ) {
@@ -93,12 +93,16 @@ class Area_Personale {
                 <!-- STRUMENTI DI GESTIONE (in base ai permessi) ------- -->
                 <?php
                 $tools = [];
+                // Risolve l'URL di una pagina front-end per slug, con fallback al backend.
+                $pg_url = static function ( string $slug, string $fallback ): string {
+                    $pg = get_posts( [ 'post_type' => 'page', 'name' => $slug, 'post_status' => 'publish', 'numberposts' => 1 ] );
+                    return $pg ? get_permalink( $pg[0] ) : $fallback;
+                };
                 if ( current_user_can( 'publish_posts' ) ) {
-                    $tools[] = [ admin_url( 'post-new.php' ),                       '✍️', 'Crea una news',        'Scrivi e pubblica una notizia sul sito.' ];
-                    $tools[] = [ admin_url( 'edit.php' ),                           '📰', 'Gestisci le news',     'Modifica o elimina le notizie pubblicate.' ];
+                    $tools[] = [ $pg_url( 'scrivi-news', admin_url( 'post-new.php' ) ), '✍️', 'Scrivi una news',  'Scrivi e pubblica una notizia sul sito.' ];
                 }
                 if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
-                    $tools[] = [ admin_url( 'admin.php?page=gfoss-soci' ),          '👥', 'Amministra soci',      'Registro soci, quote, ruoli e archiviazione.' ];
+                    $tools[] = [ $pg_url( 'gestione-soci', admin_url( 'admin.php?page=gfoss-soci' ) ), '👥', 'Soci e quote', 'Panoramica soci e gestione rapida delle quote.' ];
                 }
                 if ( current_user_can( Roles::CAP_MANAGE_VOLONTARI ) ) {
                     $rv_pg  = get_posts( [ 'post_type' => 'page', 'name' => 'registro-volontari', 'post_status' => 'publish', 'numberposts' => 1 ] );
@@ -108,6 +112,10 @@ class Area_Personale {
                 if ( current_user_can( 'edit_posts' ) ) {
                     $ge_pg  = get_posts( [ 'post_type' => 'page', 'name' => 'gestione-eventi', 'post_status' => 'publish', 'numberposts' => 1 ] );
                     if ( $ge_pg ) { $tools[] = [ get_permalink( $ge_pg[0] ), '📅', 'Gestione eventi', 'Crea e modifica gli eventi del sito dal front-end.' ]; }
+                }
+                if ( current_user_can( Roles::CAP_MANAGE_VOLONTARI ) ) {
+                    $nc = defined( 'GFOSS_NEXTCLOUD_URL' ) ? GFOSS_NEXTCLOUD_URL : ( getenv( 'GFOSS_NEXTCLOUD_URL' ) ?: '' );
+                    if ( $nc ) { $tools[] = [ $nc, '🗂️', 'Documenti del Direttivo', 'Verbali e documenti riservati (Nextcloud).' ]; }
                 }
                 if ( current_user_can( 'edit_posts' ) ) {
                     $tools[] = [ admin_url( 'post-new.php?post_type=' . ( class_exists( __NAMESPACE__ . '\\Materiali' ) ? Materiali::CPT : 'gfoss_risorsa' ) ), '📎', 'Carica un documento', 'Aggiungi una risorsa/documento riservato ai soci.' ];

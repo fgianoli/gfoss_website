@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_MEMBERS_VERSION',  '1.13.0' );
+define( 'GFOSS_MEMBERS_VERSION',  '1.14.0' );
 define( 'GFOSS_MEMBERS_FILE',     __FILE__ );
 define( 'GFOSS_MEMBERS_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'GFOSS_MEMBERS_URL',      plugin_dir_url( __FILE__ ) );
@@ -65,6 +65,8 @@ add_action( 'plugins_loaded', static function () {
     \GFOSS_Members\Volontari::init();
     \GFOSS_Members\Volontari_Frontend::init();
     \GFOSS_Members\Eventi_Frontend::init();
+    \GFOSS_Members\Soci_Frontend::init();
+    \GFOSS_Members\News_Frontend::init();
 
     if ( is_admin() ) {
         \GFOSS_Members\Admin::init();

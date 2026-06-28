@@ -527,6 +527,22 @@ gfoss_seed_page( 'gestione-eventi', 'Gestione eventi', $area_id, <<<HTML
 HTML
 , 8 );
 
+// 12e. Soci & quote (riservata al direttivo) — console front-end
+gfoss_seed_page( 'gestione-soci', 'Soci e quote', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_gestione_soci]
+<!-- /wp:shortcode -->
+HTML
+, 9 );
+
+// 12f. Scrivi News (riservata a chi pubblica) — console front-end
+gfoss_seed_page( 'scrivi-news', 'Scrivi una news', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_scrivi_news]
+<!-- /wp:shortcode -->
+HTML
+, 10 );
+
 // 13. Mappa soci (riservata, opt-in)
 gfoss_seed_page( 'mappa-soci', 'Mappa dei soci', $area_id, <<<HTML
 <!-- wp:paragraph --><p>I soci che hanno attivato «Localizzami in mappa» nel proprio profilo. Attiva l'opzione dalla tua <a href="/area-soci/">area personale</a> per comparire.</p><!-- /wp:paragraph -->
