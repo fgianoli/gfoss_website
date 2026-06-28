@@ -30,7 +30,7 @@ class Area_Personale {
             'gfoss_eventi', 'gfoss_materiali', 'gfoss_mappa_soci', 'gfoss_convocazioni',
             'gfoss_documenti_riservati', 'gfoss_progetti', 'gfoss_sondaggi',
             'gfoss_registro_volontari', 'gfoss_gestione_eventi', 'gfoss_gestione_soci', 'gfoss_scrivi_news',
-            'gfoss_console_direttivo', 'gfoss_comunicazioni_soci',
+            'gfoss_console_direttivo', 'gfoss_comunicazioni_soci', 'gfoss_votazioni',
         ];
         foreach ( $shortcodes as $sc ) {
             if ( has_shortcode( $post->post_content, $sc ) ) {
@@ -260,6 +260,7 @@ class Area_Personale {
                 $servizi = [
                     'materiali-soci' => [ 'Materiali e risorse', 'Presentazioni, template, documentazione condivisa.' ],
                     'convocazioni'   => [ 'Convocazioni e deleghe', 'Assemblee convocate e gestione delle deleghe.' ],
+                    'votazioni'      => [ 'Votazioni assemblea', 'Vota le delibere e le elezioni aperte (peso con deleghe).' ],
                     'mappa-soci'     => [ 'Mappa dei soci', 'La community sulla mappa (attiva il consenso nei tuoi dati).' ],
                     'sondaggi'       => [ 'Sondaggi', 'Esprimi la tua opinione nei sondaggi tra soci.' ],
                 ];

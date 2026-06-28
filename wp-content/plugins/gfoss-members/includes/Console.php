@@ -74,6 +74,10 @@ class Console {
         if ( $conv && current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) {
             $tools[] = [ $conv, '🏛️', 'Convocazioni e deleghe', 'Assemblee e gestione deleghe.' ];
         }
+        $voti = self::page_url( 'votazioni' );
+        if ( $voti && current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) {
+            $tools[] = [ $voti, '🗳️', 'Votazioni', 'Crea e gestisci le votazioni d\'assemblea.' ];
+        }
         if ( current_user_can( Roles::CAP_MANAGE_VOLONTARI ) ) {
             $nc = defined( 'GFOSS_NEXTCLOUD_URL' ) ? GFOSS_NEXTCLOUD_URL : ( getenv( 'GFOSS_NEXTCLOUD_URL' ) ?: '' );
             if ( $nc ) { $tools[] = [ $nc, '🗂️', 'Documenti del Direttivo', 'Verbali e file riservati (Nextcloud).' ]; }

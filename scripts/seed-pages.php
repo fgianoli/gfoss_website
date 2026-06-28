@@ -511,6 +511,14 @@ gfoss_seed_page( 'sondaggi', 'Sondaggi', $area_id, <<<HTML
 HTML
 , 6 );
 
+// 12b-quater. Votazioni d'assemblea (voto online)
+gfoss_seed_page( 'votazioni', 'Votazioni assemblea', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_votazioni]
+<!-- /wp:shortcode -->
+HTML
+, 12 );
+
 // 12b-ter. Comunicazioni ai soci — invio email front-end
 gfoss_seed_page( 'comunicazioni-soci', 'Comunicazioni ai soci', $area_id, <<<HTML
 <!-- wp:shortcode -->

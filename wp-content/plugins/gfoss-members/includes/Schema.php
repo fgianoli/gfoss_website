@@ -26,6 +26,9 @@ class Schema {
     public static function table_volontari(): string        { global $wpdb; return $wpdb->prefix . 'gfoss_volontari'; }
     public static function table_volontari_audit(): string  { global $wpdb; return $wpdb->prefix . 'gfoss_volontari_audit'; }
     public static function table_volontari_eventi(): string { global $wpdb; return $wpdb->prefix . 'gfoss_volontari_eventi'; }
+    public static function table_votazioni(): string      { global $wpdb; return $wpdb->prefix . 'gfoss_votazioni'; }
+    public static function table_voti_assemblea(): string { global $wpdb; return $wpdb->prefix . 'gfoss_voti'; }
+    public static function table_votanti(): string        { global $wpdb; return $wpdb->prefix . 'gfoss_votanti'; }
 
     public static function maybe_upgrade(): void {
         if ( get_option( 'gfoss_members_db_version' ) !== GFOSS_MEMBERS_DB_VER ) {
@@ -166,12 +169,57 @@ class Schema {
             KEY evento_id (evento_id)
         ) $charset;";
 
+        // Votazioni d'assemblea (quesiti) + voti (append-only) + turnout.
+        $t_vz = self::table_votazioni();
+        $sql_vz = "CREATE TABLE $t_vz (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            convocazione_id BIGINT UNSIGNED NULL DEFAULT NULL,
+            titolo VARCHAR(255) NOT NULL,
+            descrizione TEXT NULL,
+            tipo VARCHAR(16) NOT NULL DEFAULT 'palese',
+            opzioni TEXT NULL,
+            stato VARCHAR(16) NOT NULL DEFAULT 'bozza',
+            apertura DATETIME NULL DEFAULT NULL,
+            chiusura DATETIME NULL DEFAULT NULL,
+            created_by BIGINT UNSIGNED NULL DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY convocazione_id (convocazione_id),
+            KEY stato (stato)
+        ) $charset;";
+
+        $t_vt = self::table_voti_assemblea();
+        $sql_vt = "CREATE TABLE $t_vt (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            votazione_id BIGINT UNSIGNED NOT NULL,
+            opzione SMALLINT UNSIGNED NOT NULL,
+            peso INT UNSIGNED NOT NULL DEFAULT 1,
+            user_id BIGINT UNSIGNED NULL DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY votazione_id (votazione_id)
+        ) $charset;";
+
+        $t_vn = self::table_votanti();
+        $sql_vn = "CREATE TABLE $t_vn (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            votazione_id BIGINT UNSIGNED NOT NULL,
+            user_id BIGINT UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uniq_voto ( votazione_id, user_id ),
+            KEY votazione_id ( votazione_id )
+        ) $charset;";
+
         dbDelta( $sql_quote );
         dbDelta( $sql_cand );
         dbDelta( $sql_don );
         dbDelta( $sql_voti );
         dbDelta( $sql_vaud );
         dbDelta( $sql_veve );
+        dbDelta( $sql_vz );
+        dbDelta( $sql_vt );
+        dbDelta( $sql_vn );
 
         self::install_volontari();
         self::migrate_volontari();

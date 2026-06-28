@@ -38,6 +38,15 @@
 .gf-tool__txt strong { font-size: .95rem; }
 .gf-tool__txt small { color: #4A5C6A; font-size: .78rem; }
 
+/* Votazioni */
+.gf-voto { border-top: 1px solid #E2E8EC; padding: 1rem 0; }
+.gf-voto:first-of-type { border-top: 0; }
+.gf-voto h3 { margin: 0 0 .3rem; }
+.gf-voto__opt { display: block; padding: .35rem .2rem; }
+.gf-voto__bar { margin: .4rem 0; font-size: .9rem; }
+.gf-voto__track { background: #E9EEF2; border-radius: 6px; height: 12px; overflow: hidden; margin-top: .2rem; }
+.gf-voto__fill { background: #1A6FA0; height: 100%; }
+
 /* Console del Direttivo — KPI */
 .gf-kpis { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 1.2rem; }
 .gf-kpi {
