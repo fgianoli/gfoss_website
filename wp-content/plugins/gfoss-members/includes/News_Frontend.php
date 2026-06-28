@@ -69,8 +69,17 @@ class News_Frontend {
         if ( $ed ) { echo '<input type="hidden" name="news_id" value="' . (int) $ed->ID . '">'; }
         echo '<div class="gf-grid">';
         echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Titolo *</span><input type="text" name="titolo" value="' . ( $ed ? esc_attr( $ed->post_title ) : '' ) . '" required></label>';
-        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Contenuto</span><textarea name="contenuto" rows="10">' . ( $ed ? esc_textarea( $ed->post_content ) : '' ) . '</textarea><small class="gf-muted">Puoi usare HTML semplice (grassetto, link, elenchi).</small></label>';
-        echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">' . ( $ed ? 'Aggiorna' : 'Pubblica' ) . '</button>';
+        echo '</div>';
+        echo '<div class="gf-field gf-news-editor"><span class="gf-field__lbl">Contenuto</span>';
+        wp_editor( $ed ? $ed->post_content : '', 'contenuto', [
+            'textarea_name' => 'contenuto',
+            'media_buttons' => false,
+            'teeny'         => true,
+            'textarea_rows' => 12,
+            'quicktags'     => true,
+        ] );
+        echo '</div>';
+        echo '<p class="gf-actions"><button class="gf-btn gf-btn--primary">' . ( $ed ? 'Aggiorna' : 'Pubblica' ) . '</button>';
         if ( $ed ) { echo ' <a class="gf-btn gf-btn--ghost" href="' . esc_url( remove_query_arg( [ 'news_edit', 'msg' ] ) ) . '">Annulla</a>'; }
         echo '</p></form></section>';
 

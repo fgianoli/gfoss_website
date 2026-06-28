@@ -51,6 +51,9 @@
 }
 .gf-pick { display: flex; align-items: center; gap: .45rem; padding: .15rem 0; font-size: .92rem; }
 .gf-btn--sm { padding: .3rem .7rem; font-size: .82rem; }
+.gf-news-editor { margin: .2rem 0 1rem; }
+.gf-news-editor .gf-field__lbl { display: block; margin-bottom: .35rem; }
+.gf-news-editor .wp-editor-container { border-radius: 8px; }
 
 /* Blocco connessione (spazio GIS) */
 .gf-pre {
