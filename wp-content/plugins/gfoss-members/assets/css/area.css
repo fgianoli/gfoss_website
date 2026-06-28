@@ -38,6 +38,18 @@
 .gf-tool__txt strong { font-size: .95rem; }
 .gf-tool__txt small { color: #4A5C6A; font-size: .78rem; }
 
+/* Console del Direttivo — KPI */
+.gf-kpis { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 1.2rem; }
+.gf-kpi {
+    background: #fff; border: 1px solid #E2E8EC; border-radius: 12px; padding: 1.1rem 1.2rem;
+    box-shadow: 0 1px 2px rgba(15,35,48,.04);
+}
+.gf-kpi__num { font-family: Manrope, sans-serif; font-size: 2.4rem; font-weight: 800; line-height: 1; }
+.gf-kpi__lbl { color: #4A5C6A; font-size: .82rem; text-transform: uppercase; letter-spacing: .03em; margin-top: .35rem; }
+.gf-kpi--wide { grid-column: span 2; display: flex; flex-direction: column; justify-content: center; }
+.gf-kpi--wide .gf-kpi__ev { margin-top: .35rem; font-size: 1.05rem; }
+@media (max-width: 600px) { .gf-kpi--wide { grid-column: 1 / -1; } }
+
 /* Console Registro Volontari (front-end) */
 .gf-vol .gf-card { margin-bottom: 1.1rem; }
 .gf-select {

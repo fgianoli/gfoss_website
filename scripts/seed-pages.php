@@ -511,6 +511,14 @@ gfoss_seed_page( 'sondaggi', 'Sondaggi', $area_id, <<<HTML
 HTML
 , 6 );
 
+// 12b-bis. Console del Direttivo — hub/cruscotto
+gfoss_seed_page( 'console', 'Console del Direttivo', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_console_direttivo]
+<!-- /wp:shortcode -->
+HTML
+, 1 );
+
 // 12c. Registro volontari (riservata al direttivo) — console front-end
 gfoss_seed_page( 'registro-volontari', 'Registro volontari', $area_id, <<<HTML
 <!-- wp:shortcode -->

@@ -30,6 +30,7 @@ class Area_Personale {
             'gfoss_eventi', 'gfoss_materiali', 'gfoss_mappa_soci', 'gfoss_convocazioni',
             'gfoss_documenti_riservati', 'gfoss_progetti', 'gfoss_sondaggi',
             'gfoss_registro_volontari', 'gfoss_gestione_eventi', 'gfoss_gestione_soci', 'gfoss_scrivi_news',
+            'gfoss_console_direttivo',
         ];
         foreach ( $shortcodes as $sc ) {
             if ( has_shortcode( $post->post_content, $sc ) ) {
@@ -90,7 +91,19 @@ class Area_Personale {
 
             <div class="gf-area__grid">
 
-                <!-- STRUMENTI DI GESTIONE (in base ai permessi) ------- -->
+                <!-- CONSOLE DEL DIRETTIVO (hub unico) ----------------- -->
+                <?php
+                $console_pg = get_posts( [ 'post_type' => 'page', 'name' => 'console', 'post_status' => 'publish', 'numberposts' => 1 ] );
+                $is_board   = current_user_can( Roles::CAP_MANAGE_SOCI ) || current_user_can( Roles::CAP_MANAGE_VOLONTARI ) || current_user_can( Roles::CAP_MANAGE_QUOTE ) || current_user_can( 'edit_posts' );
+                if ( $console_pg && $is_board ) : ?>
+                    <section class="gf-area__card gf-area__card--wide">
+                        <header class="gf-area__card-head"><h2>Console del Direttivo</h2></header>
+                        <p class="gf-muted">Numeri chiave e tutti gli strumenti di gestione in un'unica pagina.</p>
+                        <p><a class="gf-btn gf-btn--primary" href="<?php echo esc_url( get_permalink( $console_pg[0] ) ); ?>">Apri la Console →</a></p>
+                    </section>
+                <?php endif; ?>
+
+                <!-- STRUMENTI DI GESTIONE (fallback se non c'è la Console) -->
                 <?php
                 $tools = [];
                 // Risolve l'URL di una pagina front-end per slug, con fallback al backend.
@@ -135,7 +148,7 @@ class Area_Personale {
                 if ( current_user_can( Roles::CAP_EXPORT_REGISTRO ) ) {
                     $tools[] = [ admin_url( 'admin.php?page=gfoss-export' ),         '⬇️', 'Esporta registro',     'Scarica il registro soci in CSV.' ];
                 }
-                if ( $tools ) :
+                if ( $tools && ! $console_pg ) :
                 ?>
                 <section class="gf-area__card gf-area__card--wide">
                     <header class="gf-area__card-head"><h2>Strumenti di gestione</h2></header>
