@@ -1,0 +1,64 @@
+# Stack Nextcloud per GFOSS.it — da mettere sul server (es. /opt/nextcloud).
+#
+# Presuppone che esista già la rete esterna di Nginx Proxy Manager (NPM):
+#   docker network ls   → individua il nome (qui assunto "npm-net")
+# NPM raggiunge il container "nextcloud-app" su questa rete (porta 80, no porte pubblicate).
+#
+# Avvio:   cd /opt/nextcloud && docker compose up -d
+# Poi configura il Proxy Host su NPM (vedi docs/runbook-server.md).
+
+services:
+  nextcloud-db:
+    image: mariadb:11
+    container_name: nextcloud-db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --log-bin=binlog --binlog-format=ROW
+    environment:
+      MARIADB_DATABASE: nextcloud
+      MARIADB_USER: nextcloud
+      MARIADB_PASSWORD: ${NC_DB_PASSWORD:?set NC_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${NC_DB_ROOT_PASSWORD:?set NC_DB_ROOT_PASSWORD}
+      MARIADB_AUTO_UPGRADE: "1"
+    volumes:
+      - nc_db:/var/lib/mysql
+    networks: [nc-internal]
+
+  nextcloud-redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    networks: [nc-internal]
+
+  nextcloud-app:
+    image: nextcloud:30-apache
+    container_name: nextcloud-app
+    restart: unless-stopped
+    depends_on: [nextcloud-db, nextcloud-redis]
+    environment:
+      MYSQL_HOST: nextcloud-db
+      MYSQL_DATABASE: nextcloud
+      MYSQL_USER: nextcloud
+      MYSQL_PASSWORD: ${NC_DB_PASSWORD}
+      REDIS_HOST: nextcloud-redis
+      NEXTCLOUD_ADMIN_USER: ${NC_ADMIN_USER:-admin}
+      NEXTCLOUD_ADMIN_PASSWORD: ${NC_ADMIN_PASSWORD:?set NC_ADMIN_PASSWORD}
+      NEXTCLOUD_TRUSTED_DOMAINS: ${NC_DOMAIN:?set NC_DOMAIN}
+      # Dietro reverse proxy (NPM): forza https e indica la rete fidata del proxy.
+      OVERWRITEPROTOCOL: https
+      OVERWRITEHOST: ${NC_DOMAIN}
+      OVERWRITECLIURL: https://${NC_DOMAIN}
+      TRUSTED_PROXIES: ${NC_TRUSTED_PROXIES:-172.16.0.0/12}
+      APACHE_BODY_LIMIT: "0"
+    volumes:
+      - nc_data:/var/www/html
+    networks: [nc-internal, npm-net]
+
+volumes:
+  nc_db:
+  nc_data:
+
+networks:
+  nc-internal:
+  npm-net:
+    external: true
+    name: ${NPM_NETWORK_NAME:-npm-net}
