@@ -22,6 +22,8 @@ class Convocazioni {
         add_action( 'save_post_' . self::CPT, [ __CLASS__, 'save' ], 10, 2 );
         add_shortcode( 'gfoss_convocazioni',  [ __CLASS__, 'shortcode' ] );
         add_action( 'admin_post_gfoss_delega', [ __CLASS__, 'handle_delega' ] );
+        add_action( 'admin_post_gfoss_conv_save',   [ __CLASS__, 'handle_conv_save' ] );
+        add_action( 'admin_post_gfoss_conv_delete', [ __CLASS__, 'handle_conv_delete' ] );
         add_filter( 'manage_' . self::CPT . '_posts_columns',       [ __CLASS__, 'columns' ] );
         add_action( 'manage_' . self::CPT . '_posts_custom_column', [ __CLASS__, 'column_value' ], 10, 2 );
     }
@@ -177,8 +179,85 @@ class Convocazioni {
             && in_array( Quote::status_for( $uid, (int) gmdate( 'Y' ) ), [ 'paid', 'expiring' ], true );
     }
 
+    // --- Creazione/gestione convocazioni dal front-end (CAP_MANAGE_ASSEMBLEE) ---
+
+    private static function back_manage( string $msg ): void {
+        $url = wp_get_referer() ?: home_url( '/area-soci/convocazioni/' );
+        wp_safe_redirect( add_query_arg( 'cvmsg', $msg, remove_query_arg( [ 'cvmsg', 'conv_edit' ], $url ) ) );
+        exit;
+    }
+
+    public static function handle_conv_save(): void {
+        if ( ! current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_conv_manage' );
+        $id    = (int) ( $_POST['conv_id'] ?? 0 );
+        $title = sanitize_text_field( wp_unslash( $_POST['titolo'] ?? '' ) );
+        if ( $title === '' ) { self::back_manage( 'err' ); }
+
+        $arr = [ 'post_type' => self::CPT, 'post_status' => 'publish', 'post_title' => $title ];
+        if ( $id ) { $arr['ID'] = $id; wp_update_post( $arr ); } else { $id = (int) wp_insert_post( $arr ); }
+        if ( ! $id ) { self::back_manage( 'err' ); }
+
+        update_post_meta( $id, '_gf_cv_data',     sanitize_text_field( wp_unslash( $_POST['data'] ?? '' ) ) );
+        update_post_meta( $id, '_gf_cv_luogo',    sanitize_text_field( wp_unslash( $_POST['luogo'] ?? '' ) ) );
+        update_post_meta( $id, '_gf_cv_tipo',     sanitize_key( $_POST['tipo'] ?? 'ordinaria' ) );
+        update_post_meta( $id, '_gf_cv_modalita', sanitize_key( $_POST['modalita'] ?? 'presenza' ) );
+        update_post_meta( $id, '_gf_cv_odg',      sanitize_textarea_field( wp_unslash( $_POST['odg'] ?? '' ) ) );
+        self::back_manage( 'saved' );
+    }
+
+    public static function handle_conv_delete(): void {
+        if ( ! current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_conv_manage' );
+        wp_trash_post( (int) ( $_POST['conv_id'] ?? 0 ) );
+        self::back_manage( 'deleted' );
+    }
+
+    private static function render_manage(): string {
+        $action = esc_url( admin_url( 'admin-post.php' ) );
+        $nonce  = wp_nonce_field( 'gfoss_conv_manage', '_wpnonce', true, false );
+        $msg    = sanitize_key( (string) ( $_GET['cvmsg'] ?? '' ) );
+        $edit   = (int) ( $_GET['conv_edit'] ?? 0 );
+        $ed     = $edit ? get_post( $edit ) : null;
+        $m      = static fn( string $k ) => $ed ? esc_attr( (string) get_post_meta( $ed->ID, $k, true ) ) : '';
+        $tipo   = $ed ? (string) get_post_meta( $ed->ID, '_gf_cv_tipo', true ) : 'ordinaria';
+        $mod    = $ed ? (string) get_post_meta( $ed->ID, '_gf_cv_modalita', true ) : 'presenza';
+
+        ob_start();
+        echo '<section class="gf-card"><h2 style="margin-top:0">Gestione convocazioni (direttivo)</h2>';
+        $notes = [ 'saved' => [ 'success', 'Convocazione salvata.' ], 'deleted' => [ 'success', 'Convocazione cestinata.' ], 'err' => [ 'warn', 'Il titolo è obbligatorio.' ] ];
+        if ( isset( $notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--' . esc_attr( $notes[ $msg ][0] ) . '">' . esc_html( $notes[ $msg ][1] ) . '</div>'; }
+
+        echo '<form method="post" action="' . $action . '" class="gf-form">' . $nonce . '<input type="hidden" name="action" value="gfoss_conv_save">';
+        if ( $ed ) { echo '<input type="hidden" name="conv_id" value="' . (int) $ed->ID . '">'; }
+        echo '<div class="gf-grid">';
+        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Titolo *</span><input type="text" name="titolo" value="' . ( $ed ? esc_attr( $ed->post_title ) : '' ) . '" required></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Data e ora</span><input type="datetime-local" name="data" value="' . $m( '_gf_cv_data' ) . '"></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Luogo</span><input type="text" name="luogo" value="' . $m( '_gf_cv_luogo' ) . '" placeholder="Padova / online"></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Tipo</span><select name="tipo"><option value="ordinaria" ' . selected( $tipo, 'ordinaria', false ) . '>Ordinaria</option><option value="straordinaria" ' . selected( $tipo, 'straordinaria', false ) . '>Straordinaria</option></select></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Modalità</span><select name="modalita"><option value="presenza" ' . selected( $mod, 'presenza', false ) . '>In presenza</option><option value="online" ' . selected( $mod, 'online', false ) . '>Online</option><option value="mista" ' . selected( $mod, 'mista', false ) . '>Mista</option></select></label>';
+        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Ordine del giorno</span><textarea name="odg" rows="4" placeholder="Un punto per riga">' . ( $ed ? esc_textarea( (string) get_post_meta( $ed->ID, '_gf_cv_odg', true ) ) : '' ) . '</textarea></label>';
+        echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">' . ( $ed ? 'Salva modifiche' : 'Crea convocazione' ) . '</button>';
+        if ( $ed ) { echo ' <a class="gf-btn gf-btn--ghost" href="' . esc_url( remove_query_arg( [ 'conv_edit', 'cvmsg' ] ) ) . '">Annulla</a>'; }
+        echo '</p></form>';
+
+        $all = get_posts( [ 'post_type' => self::CPT, 'numberposts' => 50, 'post_status' => 'publish' ] );
+        if ( $all ) {
+            echo '<div class="gf-tablewrap" style="margin-top:1rem"><table class="gf-table"><thead><tr><th>Convocazione</th><th>Data</th><th></th></tr></thead><tbody>';
+            foreach ( $all as $c ) {
+                $d = (string) get_post_meta( $c->ID, '_gf_cv_data', true );
+                echo '<tr><td><strong>' . esc_html( $c->post_title ) . '</strong></td><td>' . ( $d ? esc_html( date_i18n( 'd/m/Y H:i', strtotime( $d ) ) ) : '—' ) . '</td>';
+                echo '<td style="white-space:nowrap"><a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( add_query_arg( 'conv_edit', $c->ID, remove_query_arg( 'cvmsg' ) ) ) . '">Modifica</a> ';
+                echo '<form method="post" action="' . $action . '" style="display:inline" onsubmit="return confirm(\'Cestinare questa convocazione?\')">' . $nonce . '<input type="hidden" name="action" value="gfoss_conv_delete"><input type="hidden" name="conv_id" value="' . (int) $c->ID . '"><button class="gf-btn gf-btn--ghost gf-btn--sm">Elimina</button></form></td></tr>';
+            }
+            echo '</tbody></table></div>';
+        }
+        echo '</section>';
+        return (string) ob_get_clean();
+    }
+
     public static function shortcode( $atts = [] ): string {
-        if ( ! is_user_logged_in() || ! gfoss_members_is_socio( get_current_user_id() ) ) {
+        if ( ! is_user_logged_in() || ( ! gfoss_members_is_socio( get_current_user_id() ) && ! current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) ) {
             return '<div class="gf-card gf-card--warn">Sezione riservata ai soci. <a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Accedi</a>.</div>';
         }
         $me     = get_current_user_id();
@@ -195,6 +274,11 @@ class Convocazioni {
 
         ob_start();
         echo '<div class="gf-convocazioni">';
+
+        if ( current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) {
+            echo self::render_manage();
+            echo '<h2 style="margin-top:1.4rem">Le convocazioni</h2>';
+        }
 
         $notes = [
             'ok' => [ 'ok', 'Delega registrata.' ], 'revocata' => [ 'warn', 'Delega revocata.' ],

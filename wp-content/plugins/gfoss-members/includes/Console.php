@@ -67,6 +67,9 @@ class Console {
         if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
             $tools[] = [ self::page_url( 'gestione-soci', admin_url( 'admin.php?page=gfoss-soci' ) ), '👥', 'Soci e quote', 'Anagrafiche, quote, ruoli, archiviazione.' ];
         }
+        if ( current_user_can( Roles::CAP_VIEW_ACCOUNTING ) ) {
+            $tools[] = [ admin_url( 'admin.php?page=gfoss-contabilita' ), '📊', 'Contabilità', 'Movimenti, rendiconto e riconciliazione (tesoreria).' ];
+        }
         if ( current_user_can( 'publish_posts' ) ) {
             $tools[] = [ self::page_url( 'scrivi-news', admin_url( 'post-new.php' ) ), '✍️', 'Scrivi una news', 'Pubblica notizie sul sito.' ];
         }
@@ -111,7 +114,9 @@ class Console {
         foreach ( $tools as $t ) {
             echo '<a class="gf-tool" href="' . esc_url( $t[0] ) . '"><span class="gf-tool__ico" aria-hidden="true">' . $t[1] . '</span><span class="gf-tool__txt"><strong>' . esc_html( $t[2] ) . '</strong><small>' . esc_html( $t[3] ) . '</small></span></a>';
         }
-        echo '</div></section></div>';
+        echo '</div>';
+        echo '<p style="margin-top:14px"><a class="gf-btn gf-btn--ghost" href="' . esc_url( admin_url() ) . '">⚙️ Vai al pannello WordPress (wp-admin)</a></p>';
+        echo '</section></div>';
         return (string) ob_get_clean();
     }
 }
