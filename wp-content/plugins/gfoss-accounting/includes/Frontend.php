@@ -15,8 +15,35 @@ class Frontend {
     public static function init(): void {
         add_shortcode( 'gfoss_contabilita', [ __CLASS__, 'render' ] );
         add_action( 'wp_enqueue_scripts', [ __CLASS__, 'maybe_enqueue' ] );
-        add_action( 'admin_post_gfoss_acc_fe_save',   [ __CLASS__, 'handle_save' ] );
-        add_action( 'admin_post_gfoss_acc_fe_delete', [ __CLASS__, 'handle_delete' ] );
+        add_action( 'admin_post_gfoss_acc_fe_save',     [ __CLASS__, 'handle_save' ] );
+        add_action( 'admin_post_gfoss_acc_fe_delete',   [ __CLASS__, 'handle_delete' ] );
+        add_action( 'admin_post_gfoss_acc_cassa_save',  [ __CLASS__, 'handle_cassa_save' ] );
+        add_action( 'admin_post_gfoss_acc_bilancio_pdf',[ __CLASS__, 'handle_bilancio_pdf' ] );
+    }
+
+    public static function handle_cassa_save(): void {
+        if ( ! self::can_edit() ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_acc_fe' );
+        $year = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
+        $val  = (float) str_replace( ',', '.', (string) ( $_POST['cassa_iniziale'] ?? '0' ) );
+        Bilancio::set_cassa_iniziale( $year, $val );
+        $url = wp_get_referer() ?: home_url( '/' );
+        wp_safe_redirect( add_query_arg( [ 'acc_anno' => $year, 'msg' => 'cassa' ], remove_query_arg( [ 'msg', 'mov_edit' ], $url ) ) );
+        exit;
+    }
+
+    public static function handle_bilancio_pdf(): void {
+        if ( ! self::can_view() ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_acc_fe' );
+        $year = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
+        $pdf  = Bilancio::generate_pdf( $year );
+        if ( $pdf instanceof \WP_Error ) { self::back( 'pdf_err' ); }
+        nocache_headers();
+        header( 'Content-Type: application/pdf' );
+        header( 'Content-Disposition: attachment; filename="rendiconto-cassa-gfoss-' . $year . '.pdf"' );
+        header( 'Content-Length: ' . strlen( $pdf ) );
+        echo $pdf;
+        exit;
     }
 
     public static function maybe_enqueue(): void {
@@ -94,7 +121,7 @@ class Frontend {
         echo '<div class="gf-area gf-vol">';
         echo '<header class="gf-area__head"><div><p class="gf-area__eyebrow">Tesoreria</p><h1 class="gf-area__title">Contabilità ' . (int) $year . '</h1><p class="gf-area__sub">Movimenti, saldo e rendiconto dell\'anno.</p></div></header>';
 
-        $notes = [ 'saved' => [ 'success', 'Movimento salvato.' ], 'deleted' => [ 'success', 'Movimento eliminato.' ], 'err' => [ 'warn', 'Controlla categoria e importo.' ] ];
+        $notes = [ 'saved' => [ 'success', 'Movimento salvato.' ], 'deleted' => [ 'success', 'Movimento eliminato.' ], 'err' => [ 'warn', 'Controlla categoria e importo.' ], 'cassa' => [ 'success', 'Cassa iniziale salvata.' ], 'pdf_err' => [ 'warn', 'Generazione PDF non riuscita (mPDF).' ] ];
         if ( isset( $notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--' . esc_attr( $notes[ $msg ][0] ) . '">' . esc_html( $notes[ $msg ][1] ) . '</div>'; }
 
         // KPI
@@ -167,6 +194,19 @@ class Frontend {
         foreach ( $tot['uscite'] as $slug => $imp ) { echo '<tr><td>' . esc_html( $labels[ $slug ] ?? $slug ) . '</td><td style="text-align:right">' . esc_html( $eur( $imp ) ) . '</td></tr>'; }
         echo '<tr><td><strong>Totale uscite</strong></td><td style="text-align:right"><strong>' . esc_html( $eur( $tot['tot_uscite'] ) ) . '</strong></td></tr></tbody></table></div>';
         echo '</div><p style="margin-top:.6rem"><strong>Saldo ' . (int) $year . ': ' . esc_html( $eur( $tot['saldo'] ) ) . '</strong></p></section>';
+
+        // Bilancio — Rendiconto per cassa (Modello D)
+        echo '<section class="gf-card"><h2 style="margin-top:0">Bilancio — Rendiconto per cassa ' . (int) $year . '</h2>';
+        echo '<p class="gf-muted">Genera la <strong>bozza</strong> del rendiconto per cassa (Modello D, D.M. 5/3/2020) riclassificando i movimenti nelle sezioni ETS. La validazione finale spetta al commercialista; la disponibilità di cassa iniziale va impostata a mano.</p>';
+        if ( self::can_edit() ) {
+            echo '<form method="post" action="' . $action . '" style="margin-bottom:.8rem;display:flex;gap:.5rem;align-items:end;flex-wrap:wrap">' . $nonce . '<input type="hidden" name="action" value="gfoss_acc_cassa_save"><input type="hidden" name="anno" value="' . (int) $year . '">';
+            echo '<label class="gf-field" style="max-width:260px"><span class="gf-field__lbl">Cassa e banca al 1°/1/' . (int) $year . ' (€)</span><input type="text" name="cassa_iniziale" value="' . esc_attr( number_format( Bilancio::cassa_iniziale( $year ), 2, '.', '' ) ) . '"></label>';
+            echo '<button class="gf-btn gf-btn--ghost">Salva cassa iniziale</button></form>';
+        } else {
+            echo '<p>Cassa iniziale ' . (int) $year . ': <strong>' . esc_html( $eur( Bilancio::cassa_iniziale( $year ) ) ) . '</strong></p>';
+        }
+        echo '<form method="post" action="' . $action . '">' . $nonce . '<input type="hidden" name="action" value="gfoss_acc_bilancio_pdf"><input type="hidden" name="anno" value="' . (int) $year . '"><button class="gf-btn gf-btn--primary">⬇ Genera Rendiconto per cassa (PDF)</button></form>';
+        echo '</section>';
 
         echo '</div>';
         return (string) ob_get_clean();
