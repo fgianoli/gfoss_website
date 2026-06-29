@@ -511,6 +511,14 @@ gfoss_seed_page( 'sondaggi', 'Sondaggi', $area_id, <<<HTML
 HTML
 , 6 );
 
+// 12b-quinquies. Contabilità (tesoreria) — console front-end
+gfoss_seed_page( 'contabilita', 'Contabilità', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_contabilita]
+<!-- /wp:shortcode -->
+HTML
+, 13 );
+
 // 12b-quater. Votazioni d'assemblea (voto online)
 gfoss_seed_page( 'votazioni', 'Votazioni assemblea', $area_id, <<<HTML
 <!-- wp:shortcode -->

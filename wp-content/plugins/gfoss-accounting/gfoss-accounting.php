@@ -13,7 +13,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_ACCOUNTING_VERSION', '1.0.0' );
+define( 'GFOSS_ACCOUNTING_VERSION', '1.1.0' );
 define( 'GFOSS_ACCOUNTING_FILE',    __FILE__ );
 define( 'GFOSS_ACCOUNTING_DIR',     plugin_dir_path( __FILE__ ) );
 define( 'GFOSS_ACCOUNTING_URL',     plugin_dir_url( __FILE__ ) );
@@ -39,6 +39,7 @@ add_action( 'plugins_loaded', static function () {
     if ( ! class_exists( '\\GFOSS_Members\\Roles' ) ) { return; }
     \GFOSS_Accounting\Schema::maybe_upgrade();
     \GFOSS_Accounting\Hooks::init();
+    \GFOSS_Accounting\Frontend::init();
     if ( is_admin() ) {
         \GFOSS_Accounting\Admin::init();
         \GFOSS_Accounting\Export::init();

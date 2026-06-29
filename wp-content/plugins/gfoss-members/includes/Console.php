@@ -68,7 +68,7 @@ class Console {
             $tools[] = [ self::page_url( 'gestione-soci', admin_url( 'admin.php?page=gfoss-soci' ) ), '👥', 'Soci e quote', 'Anagrafiche, quote, ruoli, archiviazione.' ];
         }
         if ( current_user_can( Roles::CAP_VIEW_ACCOUNTING ) ) {
-            $tools[] = [ admin_url( 'admin.php?page=gfoss-contabilita' ), '📊', 'Contabilità', 'Movimenti, rendiconto e riconciliazione (tesoreria).' ];
+            $tools[] = [ self::page_url( 'contabilita', admin_url( 'admin.php?page=gfoss-contabilita' ) ), '📊', 'Contabilità', 'Movimenti, saldo e rendiconto (tesoreria).' ];
         }
         if ( current_user_can( 'publish_posts' ) ) {
             $tools[] = [ self::page_url( 'scrivi-news', admin_url( 'post-new.php' ) ), '✍️', 'Scrivi una news', 'Pubblica notizie sul sito.' ];
