@@ -575,6 +575,14 @@ gfoss_seed_page( 'scrivi-news', 'Scrivi una news', $area_id, <<<HTML
 HTML
 , 10 );
 
+// 12g. Rubrica soci (bio, riservata ai soci)
+gfoss_seed_page( 'rubrica-soci', 'Rubrica soci', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_elenco_soci]
+<!-- /wp:shortcode -->
+HTML
+, 12 );
+
 // 13. Mappa soci (riservata, opt-in)
 gfoss_seed_page( 'mappa-soci', 'Mappa dei soci', $area_id, <<<HTML
 <!-- wp:paragraph --><p>I soci che hanno attivato «Localizzami in mappa» nel proprio profilo. Attiva l'opzione dalla tua <a href="/area-soci/">area personale</a> per comparire.</p><!-- /wp:paragraph -->

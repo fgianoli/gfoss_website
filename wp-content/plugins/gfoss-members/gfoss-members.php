@@ -14,7 +14,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_MEMBERS_VERSION',  '1.20.0' );
+define( 'GFOSS_MEMBERS_VERSION',  '1.21.0' );
 define( 'GFOSS_MEMBERS_FILE',     __FILE__ );
 define( 'GFOSS_MEMBERS_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'GFOSS_MEMBERS_URL',      plugin_dir_url( __FILE__ ) );
@@ -56,6 +56,7 @@ add_action( 'plugins_loaded', static function () {
     \GFOSS_Members\Eventi::init();
     \GFOSS_Members\Materiali::init();
     \GFOSS_Members\Mappa_Soci::init();
+    \GFOSS_Members\Elenco_Soci::init();
     \GFOSS_Members\Convocazioni::init();
     \GFOSS_Members\Progetti::init();
     \GFOSS_Members\Sondaggi::init();

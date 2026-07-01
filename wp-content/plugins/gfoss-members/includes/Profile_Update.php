@@ -13,7 +13,7 @@ class Profile_Update {
 
     private const META_FIELDS = [
         'gf_telefono', 'gf_indirizzo', 'gf_cap', 'gf_citta', 'gf_provincia',
-        'gf_professione', 'gf_competenze',
+        'gf_professione', 'gf_competenze', 'gf_bio',
     ];
 
     public static function init(): void {
@@ -52,6 +52,7 @@ class Profile_Update {
                     if ( $val !== '' && ! preg_match( '/^[A-Z]{2}$/', $val ) ) { continue 2; }
                     break;
                 case 'gf_competenze':
+                case 'gf_bio':
                     $val = sanitize_textarea_field( (string) $val );
                     break;
                 default:

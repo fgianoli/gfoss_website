@@ -82,6 +82,7 @@ class Mappa_Soci {
                 'nome' => $u->display_name,
                 'citta'=> (string) get_user_meta( $u->ID, 'gf_citta', true ),
                 'comp' => wp_trim_words( (string) get_user_meta( $u->ID, 'gf_competenze', true ), 16 ),
+                'bio'  => wp_trim_words( (string) get_user_meta( $u->ID, 'gf_bio', true ), 30 ),
             ];
         }
         return $points;
@@ -114,6 +115,7 @@ class Mappa_Soci {
                 var m = L.marker([p.lat, p.lon]).addTo(map);
                 var html = '<strong>' + p.nome + '</strong>';
                 if (p.citta) html += '<br>' + p.citta;
+                if (p.bio)   html += '<br>' + p.bio;
                 if (p.comp)  html += '<br><em>' + p.comp + '</em>';
                 m.bindPopup(html);
                 group.push([p.lat, p.lon]);

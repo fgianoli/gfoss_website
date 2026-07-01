@@ -30,7 +30,7 @@ class Area_Personale {
             'gfoss_eventi', 'gfoss_materiali', 'gfoss_mappa_soci', 'gfoss_convocazioni',
             'gfoss_documenti_riservati', 'gfoss_progetti', 'gfoss_sondaggi',
             'gfoss_registro_volontari', 'gfoss_gestione_eventi', 'gfoss_gestione_soci', 'gfoss_scrivi_news',
-            'gfoss_console_direttivo', 'gfoss_comunicazioni_soci', 'gfoss_votazioni',
+            'gfoss_console_direttivo', 'gfoss_comunicazioni_soci', 'gfoss_votazioni', 'gfoss_elenco_soci',
         ];
         foreach ( $shortcodes as $sc ) {
             if ( has_shortcode( $post->post_content, $sc ) ) {
@@ -262,6 +262,7 @@ class Area_Personale {
                     'convocazioni'   => [ 'Convocazioni e deleghe', 'Assemblee convocate e gestione delle deleghe.' ],
                     'votazioni'      => [ 'Votazioni assemblea', 'Vota le delibere e le elezioni aperte (peso con deleghe).' ],
                     'mappa-soci'     => [ 'Mappa dei soci', 'La community sulla mappa (attiva il consenso nei tuoi dati).' ],
+                    'rubrica-soci'   => [ 'Rubrica soci', 'Le bio degli altri soci della community.' ],
                     'sondaggi'       => [ 'Sondaggi', 'Esprimi la tua opinione nei sondaggi tra soci.' ],
                 ];
                 foreach ( $servizi as $slug => $info ) :
@@ -338,6 +339,10 @@ class Area_Personale {
                             <label class="gf-field gf-col-2">
                                 <span class="gf-field__lbl">Aree di competenza</span>
                                 <textarea name="gf_competenze" rows="3"><?php echo esc_textarea( get_user_meta( $user->ID, 'gf_competenze', true ) ); ?></textarea>
+                            </label>
+                            <label class="gf-field gf-col-2">
+                                <span class="gf-field__lbl">Bio <small class="gf-muted">(visibile solo agli altri soci)</small></span>
+                                <textarea name="gf_bio" rows="4" placeholder="Presentati agli altri soci: chi sei, di cosa ti occupi, i tuoi interessi GIS/open source…"><?php echo esc_textarea( get_user_meta( $user->ID, 'gf_bio', true ) ); ?></textarea>
                             </label>
                             <label class="gf-check gf-col-2">
                                 <input type="checkbox" name="gf_volontario" value="1" <?php checked( get_user_meta( $user->ID, 'gf_volontario', true ), '1' ); ?>>
