@@ -100,6 +100,16 @@ class Console {
         echo '<div class="gf-area gf-console">';
         echo '<header class="gf-area__head"><div><p class="gf-area__eyebrow">Consiglio Direttivo</p><h1 class="gf-area__title">Console del Direttivo</h1><p class="gf-area__sub">Tutto sotto controllo: numeri chiave e strumenti in un colpo d\'occhio.</p></div></header>';
 
+        // Notifica: candidature nuovi soci in attesa di approvazione
+        if ( current_user_can( Roles::CAP_REVIEW_CANDIDATURE ) ) {
+            $da_app = Candidatura::count_da_approvare();
+            if ( $da_app > 0 ) {
+                echo '<div class="gf-card gf-card--warn" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem">'
+                    . '<span>🔔 <strong>' . (int) $da_app . '</strong> ' . ( $da_app === 1 ? 'nuova candidatura socio è in attesa' : 'nuove candidature soci sono in attesa' ) . ' di approvazione.</span>'
+                    . '<a class="gf-btn gf-btn--primary" href="' . esc_url( admin_url( 'admin.php?page=gfoss-candidature' ) ) . '">Esamina le candidature →</a></div>';
+            }
+        }
+
         // KPI
         echo '<div class="gf-kpis">';
         foreach ( $kpis as $k ) {

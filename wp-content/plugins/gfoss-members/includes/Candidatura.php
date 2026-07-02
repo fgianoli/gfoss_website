@@ -79,6 +79,14 @@ class Candidatura {
         return $wpdb->get_results( $prepared, ARRAY_A ) ?: [];
     }
 
+    /** Candidature che attendono una decisione del Consiglio Direttivo. */
+    public static function count_da_approvare(): int {
+        global $wpdb;
+        return (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM " . Schema::table_candidatura() . " WHERE stato IN ('pending','awaiting_cd')"
+        );
+    }
+
     public static function approve( int $id, int $reviewer_user_id, string $note = '' ): bool {
         return self::set_cd_decision( $id, 'approved', $reviewer_user_id, $note );
     }
