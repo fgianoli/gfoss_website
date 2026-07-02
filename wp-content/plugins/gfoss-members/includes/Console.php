@@ -64,8 +64,8 @@ class Console {
         if ( current_user_can( 'edit_posts' ) ) {
             $tools[] = [ self::page_url( 'gestione-eventi', admin_url( 'edit.php?post_type=' . Eventi::CPT ) ), '📅', 'Eventi', 'Crea e gestisci gli eventi.' ];
         }
-        if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
-            $tools[] = [ self::page_url( 'gestione-soci', admin_url( 'admin.php?page=gfoss-soci' ) ), '👥', 'Soci e quote', 'Anagrafiche, quote, ruoli, archiviazione.' ];
+        if ( current_user_can( Roles::CAP_MANAGE_SOCI ) || current_user_can( Roles::CAP_MANAGE_QUOTE ) ) {
+            $tools[] = [ self::page_url( 'gestione-soci', admin_url( 'admin.php?page=gfoss-soci' ) ), '👥', 'Soci e quote', 'Quote, ricevute, anagrafiche, ruoli.' ];
         }
         if ( current_user_can( Roles::CAP_VIEW_ACCOUNTING ) ) {
             $tools[] = [ self::page_url( 'contabilita', admin_url( 'admin.php?page=gfoss-contabilita' ) ), '📊', 'Contabilità', 'Movimenti, saldo e rendiconto (tesoreria).' ];

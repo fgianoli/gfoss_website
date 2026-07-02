@@ -19,16 +19,21 @@ class Soci_Frontend {
 
     public static function init(): void {
         add_shortcode( 'gfoss_gestione_soci', [ __CLASS__, 'render' ] );
-        add_action( 'admin_post_gfoss_soci_quota',   [ __CLASS__, 'handle_quota' ] );
-        add_action( 'admin_post_gfoss_soci_meta',    [ __CLASS__, 'handle_meta' ] );
-        add_action( 'admin_post_gfoss_soci_roles',   [ __CLASS__, 'handle_roles' ] );
-        add_action( 'admin_post_gfoss_soci_archive', [ __CLASS__, 'handle_archive' ] );
-        add_action( 'admin_post_gfoss_soci_delete',  [ __CLASS__, 'handle_delete' ] );
+        add_action( 'admin_post_gfoss_soci_quota',    [ __CLASS__, 'handle_quota' ] );
+        add_action( 'admin_post_gfoss_soci_ricevuta', [ __CLASS__, 'handle_ricevuta' ] );
+        add_action( 'admin_post_gfoss_soci_meta',     [ __CLASS__, 'handle_meta' ] );
+        add_action( 'admin_post_gfoss_soci_roles',    [ __CLASS__, 'handle_roles' ] );
+        add_action( 'admin_post_gfoss_soci_archive',  [ __CLASS__, 'handle_archive' ] );
+        add_action( 'admin_post_gfoss_soci_delete',   [ __CLASS__, 'handle_delete' ] );
     }
 
+    /** Accesso alla console: chi gestisce soci OPPURE chi gestisce le quote (tesoriere). */
     private static function can(): bool {
-        return is_user_logged_in() && current_user_can( Roles::CAP_MANAGE_SOCI );
+        return is_user_logged_in() && ( current_user_can( Roles::CAP_MANAGE_SOCI ) || current_user_can( Roles::CAP_MANAGE_QUOTE ) );
     }
+
+    private static function can_soci(): bool  { return current_user_can( Roles::CAP_MANAGE_SOCI ); }
+    private static function can_quota(): bool { return current_user_can( Roles::CAP_MANAGE_QUOTE ); }
 
     private static function can_roles(): bool {
         return current_user_can( 'promote_users' ) || current_user_can( Roles::CAP_MANAGE_ASSEMBLEE );
@@ -44,20 +49,44 @@ class Soci_Frontend {
     // --- Handlers ----------------------------------------------------------
 
     public static function handle_quota(): void {
-        if ( ! self::can() || ! current_user_can( Roles::CAP_MANAGE_QUOTE ) ) { wp_die( 'Permesso negato.' ); }
+        if ( ! self::can_quota() ) { wp_die( 'Permesso negato.' ); }
         check_admin_referer( 'gfoss_soci' );
         $uid  = (int) ( $_POST['uid'] ?? 0 );
-        $anno = (int) gmdate( 'Y' );
+        $anno = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
         if ( ( $_POST['op'] ?? '' ) === 'paid' ) {
-            Quote::mark_paid( $uid, $anno, 'bonifico', null, 'Console soci (front-end)', Quote::default_amount() );
+            $amount = (float) str_replace( ',', '.', (string) ( $_POST['importo'] ?? '' ) );
+            if ( $amount <= 0 ) { $amount = Quote::default_amount(); }
+            $metodo = sanitize_key( (string) ( $_POST['metodo'] ?? 'bonifico' ) );
+            Quote::mark_paid( $uid, $anno, $metodo, null, 'Console soci (front-end)', $amount );
         } else {
             Quote::mark_unpaid( $uid, $anno );
         }
         self::back( (int) ( $_POST['detail'] ?? 0 ) ? $uid : 0, 'quota' );
     }
 
+    public static function handle_ricevuta(): void {
+        if ( ! self::can_quota() ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_soci' );
+        $uid  = (int) ( $_POST['uid'] ?? 0 );
+        $anno = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
+        $num  = trim( (string) ( $_POST['ricevuta_numero'] ?? '' ) );
+        if ( $num !== '' && Quote::ricevuta_numero_in_use( $anno, (int) $num, $uid ) ) {
+            self::back( $uid, 'ric_dup' );
+        }
+        Quote::save_ricevuta( $uid, $anno, [
+            'ricevuta_numero' => $num,
+            'data_pagamento'  => sanitize_text_field( wp_unslash( $_POST['data_pagamento'] ?? '' ) ),
+            'verbale_data'    => sanitize_text_field( wp_unslash( $_POST['verbale_data'] ?? '' ) ),
+            'pagatore_nome'   => wp_unslash( $_POST['pagatore_nome'] ?? '' ),
+            'pagatore_sede'   => wp_unslash( $_POST['pagatore_sede'] ?? '' ),
+            'pagatore_cf'     => wp_unslash( $_POST['pagatore_cf'] ?? '' ),
+            'pagatore_piva'   => wp_unslash( $_POST['pagatore_piva'] ?? '' ),
+        ] );
+        self::back( $uid, 'ric_saved' );
+    }
+
     public static function handle_meta(): void {
-        if ( ! self::can() ) { wp_die( 'Permesso negato.' ); }
+        if ( ! self::can_soci() ) { wp_die( 'Permesso negato.' ); }
         check_admin_referer( 'gfoss_soci' );
         $uid = (int) ( $_POST['uid'] ?? 0 );
         $num = sanitize_text_field( wp_unslash( $_POST['gf_numero_socio'] ?? '' ) );
@@ -91,7 +120,7 @@ class Soci_Frontend {
     }
 
     public static function handle_archive(): void {
-        if ( ! self::can() ) { wp_die( 'Permesso negato.' ); }
+        if ( ! self::can_soci() ) { wp_die( 'Permesso negato.' ); }
         check_admin_referer( 'gfoss_soci' );
         $uid = (int) ( $_POST['uid'] ?? 0 );
         if ( ( $_POST['op'] ?? '' ) === 'reactivate' ) { Archivio::reactivate( $uid ); }
@@ -191,35 +220,71 @@ class Soci_Frontend {
         echo '<div class="gf-area gf-vol">';
         echo '<header class="gf-area__head"><div><p class="gf-area__eyebrow"><a href="' . $back . '">← Tutti i soci</a></p><h1 class="gf-area__title">' . esc_html( $u->display_name ) . '</h1><p class="gf-area__sub">' . esc_html( $u->user_email ) . ' · ' . self::chip( $st ) . '</p></div></header>';
 
-        $notes = [ 'saved' => [ 'success', 'Dati salvati.' ], 'roles' => [ 'success', 'Ruoli aggiornati.' ], 'quota' => [ 'success', 'Quota aggiornata.' ], 'archived' => [ 'success', 'Stato aggiornato.' ], 'dup' => [ 'warn', 'Numero socio già assegnato a un altro socio.' ] ];
+        $notes = [ 'saved' => [ 'success', 'Dati salvati.' ], 'roles' => [ 'success', 'Ruoli aggiornati.' ], 'quota' => [ 'success', 'Quota aggiornata.' ], 'archived' => [ 'success', 'Stato aggiornato.' ], 'dup' => [ 'warn', 'Numero socio già assegnato a un altro socio.' ], 'ric_saved' => [ 'success', 'Dati ricevuta salvati.' ], 'ric_dup' => [ 'warn', 'Numero ricevuta già usato per quest\'anno.' ] ];
         if ( isset( $notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--' . esc_attr( $notes[ $msg ][0] ) . '">' . esc_html( $notes[ $msg ][1] ) . '</div>'; }
 
         // Anagrafica
         echo '<section class="gf-card"><h2 style="margin-top:0">Dati socio</h2>';
-        echo '<form method="post" action="' . $action . '" class="gf-form">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_meta"><input type="hidden" name="uid" value="' . $uid . '">';
-        echo '<div class="gf-grid">';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Numero socio</span><input type="text" name="gf_numero_socio" value="' . $meta( 'gf_numero_socio' ) . '" placeholder="auto se vuoto"></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Codice fiscale</span><input type="text" name="gf_codice_fiscale" value="' . $meta( 'gf_codice_fiscale' ) . '"></label>';
-        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Indirizzo</span><input type="text" name="gf_indirizzo" value="' . $meta( 'gf_indirizzo' ) . '"></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">CAP</span><input type="text" name="gf_cap" value="' . $meta( 'gf_cap' ) . '"></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Città</span><input type="text" name="gf_citta" value="' . $meta( 'gf_citta' ) . '"></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Provincia</span><input type="text" name="gf_provincia" value="' . $meta( 'gf_provincia' ) . '"></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Telefono</span><input type="text" name="gf_telefono" value="' . $meta( 'gf_telefono' ) . '"></label>';
-        echo '<label class="gf-check gf-col-2"><input type="checkbox" name="gf_volontario" value="1" ' . checked( get_user_meta( $uid, 'gf_volontario', true ), '1', false ) . '> Disponibile ad attività di volontariato</label>';
-        echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">Salva dati</button></p></form></section>';
+        if ( self::can_soci() ) {
+            echo '<form method="post" action="' . $action . '" class="gf-form">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_meta"><input type="hidden" name="uid" value="' . $uid . '">';
+            echo '<div class="gf-grid">';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Numero socio</span><input type="text" name="gf_numero_socio" value="' . $meta( 'gf_numero_socio' ) . '" placeholder="auto se vuoto"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Codice fiscale</span><input type="text" name="gf_codice_fiscale" value="' . $meta( 'gf_codice_fiscale' ) . '"></label>';
+            echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Indirizzo</span><input type="text" name="gf_indirizzo" value="' . $meta( 'gf_indirizzo' ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">CAP</span><input type="text" name="gf_cap" value="' . $meta( 'gf_cap' ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Città</span><input type="text" name="gf_citta" value="' . $meta( 'gf_citta' ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Provincia</span><input type="text" name="gf_provincia" value="' . $meta( 'gf_provincia' ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Telefono</span><input type="text" name="gf_telefono" value="' . $meta( 'gf_telefono' ) . '"></label>';
+            echo '<label class="gf-check gf-col-2"><input type="checkbox" name="gf_volontario" value="1" ' . checked( get_user_meta( $uid, 'gf_volontario', true ), '1', false ) . '> Disponibile ad attività di volontariato</label>';
+            echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">Salva dati</button></p></form>';
+        } else {
+            echo '<div class="gf-tablewrap"><table class="gf-table"><tbody>'
+                . '<tr><th>Numero socio</th><td>' . esc_html( (string) get_user_meta( $uid, 'gf_numero_socio', true ) ?: '—' ) . '</td></tr>'
+                . '<tr><th>Codice fiscale</th><td>' . esc_html( (string) get_user_meta( $uid, 'gf_codice_fiscale', true ) ?: '—' ) . '</td></tr>'
+                . '<tr><th>Indirizzo</th><td>' . esc_html( trim( get_user_meta( $uid, 'gf_indirizzo', true ) . ' ' . get_user_meta( $uid, 'gf_cap', true ) . ' ' . get_user_meta( $uid, 'gf_citta', true ) . ' ' . ( get_user_meta( $uid, 'gf_provincia', true ) ? '(' . get_user_meta( $uid, 'gf_provincia', true ) . ')' : '' ) ) ?: '—' ) . '</td></tr>'
+                . '</tbody></table></div><p class="gf-muted">Dati anagrafici in sola lettura (li modifica chi gestisce i soci).</p>';
+        }
+        echo '</section>';
 
         // Quota
         echo '<section class="gf-card"><h2 style="margin-top:0">Quota ' . $year . ' ' . self::chip( $st ) . '</h2>';
         if ( $can_q ) {
-            $op  = in_array( $st, [ 'paid', 'expiring' ], true ) ? 'unpaid' : 'paid';
-            $lbl = $op === 'paid' ? 'Segna pagata' : 'Segna non pagata';
-            echo '<form method="post" action="' . $action . '" style="margin-bottom:1rem">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_quota"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="detail" value="1"><input type="hidden" name="op" value="' . esc_attr( $op ) . '"><button class="gf-btn gf-btn--primary">' . esc_html( $lbl ) . '</button></form>';
+            echo '<form method="post" action="' . $action . '" style="display:flex;gap:.5rem;align-items:end;flex-wrap:wrap;margin-bottom:.8rem">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_quota"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="detail" value="1"><input type="hidden" name="anno" value="' . $year . '"><input type="hidden" name="op" value="paid">';
+            echo '<label class="gf-field" style="max-width:110px"><span class="gf-field__lbl">Importo €</span><input type="text" name="importo" value="' . esc_attr( number_format( Quote::default_amount(), 2, '.', '' ) ) . '"></label>';
+            echo '<label class="gf-field" style="max-width:150px"><span class="gf-field__lbl">Metodo</span><select name="metodo"><option value="bonifico">Bonifico</option><option value="contanti">Contanti</option><option value="paypal">PayPal</option><option value="carta">Carta</option><option value="altro">Altro</option></select></label>';
+            echo '<button class="gf-btn gf-btn--primary">Segna pagata</button></form>';
+            if ( in_array( $st, [ 'paid', 'expiring' ], true ) ) {
+                echo '<form method="post" action="' . $action . '" style="margin-bottom:1rem">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_quota"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="detail" value="1"><input type="hidden" name="anno" value="' . $year . '"><input type="hidden" name="op" value="unpaid"><button class="gf-btn gf-btn--ghost gf-btn--sm">Segna non pagata</button></form>';
+            }
         }
         $storico = Quote::for_user( $uid );
         echo '<div class="gf-tablewrap"><table class="gf-table"><thead><tr><th>Anno</th><th>Importo</th><th>Metodo</th><th>Stato</th></tr></thead><tbody>';
         if ( ! $storico ) { echo '<tr><td colspan="4" class="gf-muted">Nessun pagamento.</td></tr>'; }
         else { foreach ( $storico as $r ) { echo '<tr><td>' . esc_html( $r['anno'] ) . '</td><td>' . esc_html( number_format_i18n( (float) $r['importo'], 2 ) ) . ' €</td><td>' . esc_html( $r['metodo'] ) . '</td><td>' . ( $r['stato'] === 'paid' ? '✓ pagata' : esc_html( $r['stato'] ) ) . '</td></tr>'; } }
         echo '</tbody></table></div></section>';
+
+        // Ricevuta (solo tesoreria)
+        if ( $can_q ) {
+            $ric      = Quote::get( $uid, $year ) ?: [];
+            $next_ric = Quote::next_ricevuta_numero( $year );
+            $rv       = static fn( string $k ) => esc_attr( (string) ( $ric[ $k ] ?? '' ) );
+            echo '<section class="gf-card"><h2 style="margin-top:0">Ricevuta ' . $year . '</h2>';
+            echo '<p class="gf-muted">La ricevuta si genera solo con <strong>numero</strong> e <strong>data di pagamento</strong>. Per i nuovi iscritti compila anche la data del verbale.</p>';
+            echo '<form method="post" action="' . $action . '" class="gf-form">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_ricevuta"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="anno" value="' . $year . '">';
+            echo '<div class="gf-grid">';
+            echo '<label class="gf-field"><span class="gf-field__lbl">N. ricevuta (/' . $year . ')</span><input type="number" min="1" name="ricevuta_numero" value="' . $rv( 'ricevuta_numero' ) . '" placeholder="' . esc_attr( (string) $next_ric ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Data pagamento</span><input type="date" name="data_pagamento" value="' . $rv( 'data_pagamento' ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Data verbale (nuovo iscritto)</span><input type="date" name="verbale_data" value="' . $rv( 'verbale_data' ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Pagatore: denominazione</span><input type="text" name="pagatore_nome" value="' . $rv( 'pagatore_nome' ) . '" placeholder="solo se diverso dal socio"></label>';
+            echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Pagatore: sede</span><input type="text" name="pagatore_sede" value="' . $rv( 'pagatore_sede' ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Pagatore: CF</span><input type="text" name="pagatore_cf" value="' . $rv( 'pagatore_cf' ) . '"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Pagatore: P.IVA</span><input type="text" name="pagatore_piva" value="' . $rv( 'pagatore_piva' ) . '"></label>';
+            echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">Salva dati ricevuta</button>';
+            if ( $ric && Quote::has_ricevuta( $ric ) ) {
+                echo ' <a class="gf-btn gf-btn--ghost" href="' . esc_url( Ricevuta::download_url( $uid, $year ) ) . '">⬇ Scarica ricevuta PDF</a>';
+            }
+            echo '</p></form></section>';
+        }
 
         // Ruoli
         echo '<section class="gf-card"><h2 style="margin-top:0">Ruoli</h2>';
@@ -238,18 +303,21 @@ class Soci_Frontend {
         }
         echo '</section>';
 
-        // Archiviazione
-        echo '<section class="gf-card"><h2 style="margin-top:0">Stato e archiviazione</h2>';
-        if ( Archivio::is_archived( $uid ) ) {
-            echo '<p>Socio <strong>archiviato</strong>.</p><form method="post" action="' . $action . '" style="display:inline">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_archive"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="op" value="reactivate"><button class="gf-btn gf-btn--primary">Riabilita socio</button></form>';
-        } else {
-            echo '<form method="post" action="' . $action . '" style="display:inline" onsubmit="return confirm(\'Archiviare questo socio?\')">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_archive"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="op" value="archive"><button class="gf-btn gf-btn--ghost">Archivia socio</button></form>';
+        // Archiviazione (solo chi gestisce i soci)
+        if ( self::can_soci() ) {
+            echo '<section class="gf-card"><h2 style="margin-top:0">Stato e archiviazione</h2>';
+            if ( Archivio::is_archived( $uid ) ) {
+                echo '<p>Socio <strong>archiviato</strong>.</p><form method="post" action="' . $action . '" style="display:inline">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_archive"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="op" value="reactivate"><button class="gf-btn gf-btn--primary">Riabilita socio</button></form>';
+            } else {
+                echo '<form method="post" action="' . $action . '" style="display:inline" onsubmit="return confirm(\'Archiviare questo socio?\')">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_archive"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="op" value="archive"><button class="gf-btn gf-btn--ghost">Archivia socio</button></form>';
+            }
+            if ( current_user_can( 'delete_users' ) ) {
+                echo '<hr style="margin:14px 0"><p class="gf-muted">Eliminazione definitiva (GDPR): rimuove l\'utente e tutti i suoi dati. Irreversibile.</p>';
+                echo '<form method="post" action="' . $action . '" onsubmit="return confirm(\'ELIMINARE definitivamente ' . esc_attr( $u->display_name ) . ' e tutti i suoi dati?\')">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_delete"><input type="hidden" name="uid" value="' . $uid . '"><button class="gf-btn gf-btn--ghost" style="border-color:#C0392B;color:#C0392B">Elimina definitivamente</button></form>';
+            }
+            echo '</section>';
         }
-        if ( current_user_can( 'delete_users' ) ) {
-            echo '<hr style="margin:14px 0"><p class="gf-muted">Eliminazione definitiva (GDPR): rimuove l\'utente e tutti i suoi dati. Irreversibile.</p>';
-            echo '<form method="post" action="' . $action . '" onsubmit="return confirm(\'ELIMINARE definitivamente ' . esc_attr( $u->display_name ) . ' e tutti i suoi dati?\')">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_delete"><input type="hidden" name="uid" value="' . $uid . '"><button class="gf-btn gf-btn--ghost" style="border-color:#C0392B;color:#C0392B">Elimina definitivamente</button></form>';
-        }
-        echo '</section></div>';
+        echo '</div>';
         return (string) ob_get_clean();
     }
 }

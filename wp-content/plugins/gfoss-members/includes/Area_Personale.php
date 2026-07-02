@@ -114,8 +114,8 @@ class Area_Personale {
                 if ( current_user_can( 'publish_posts' ) ) {
                     $tools[] = [ $pg_url( 'scrivi-news', admin_url( 'post-new.php' ) ), '✍️', 'Scrivi una news',  'Scrivi e pubblica una notizia sul sito.' ];
                 }
-                if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
-                    $tools[] = [ $pg_url( 'gestione-soci', admin_url( 'admin.php?page=gfoss-soci' ) ), '👥', 'Soci e quote', 'Panoramica soci e gestione rapida delle quote.' ];
+                if ( current_user_can( Roles::CAP_MANAGE_SOCI ) || current_user_can( Roles::CAP_MANAGE_QUOTE ) ) {
+                    $tools[] = [ $pg_url( 'gestione-soci', admin_url( 'admin.php?page=gfoss-soci' ) ), '👥', 'Soci e quote', 'Quote, ricevute e panoramica soci.' ];
                 }
                 if ( current_user_can( Roles::CAP_MANAGE_VOLONTARI ) ) {
                     $rv_pg  = get_posts( [ 'post_type' => 'page', 'name' => 'registro-volontari', 'post_status' => 'publish', 'numberposts' => 1 ] );
