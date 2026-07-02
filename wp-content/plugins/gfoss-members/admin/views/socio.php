@@ -53,6 +53,23 @@ if ( ! empty( $_POST['_action'] ) && current_user_can( Roles::CAP_MANAGE_SOCI ) 
         Quote::mark_unpaid( $uid, (int) ( $_POST['anno'] ?? gmdate( 'Y' ) ) );
         wp_safe_redirect( add_query_arg( 'msg', 'unpaid', wp_get_referer() ) ); exit;
     }
+    if ( $action === 'save_ricevuta' ) {
+        $ric_anno = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
+        $ric_num  = trim( (string) ( $_POST['ricevuta_numero'] ?? '' ) );
+        if ( $ric_num !== '' && Quote::ricevuta_numero_in_use( $ric_anno, (int) $ric_num, $uid ) ) {
+            wp_safe_redirect( add_query_arg( 'msg', 'ric_dup', wp_get_referer() ) ); exit;
+        }
+        Quote::save_ricevuta( $uid, $ric_anno, [
+            'ricevuta_numero' => $ric_num,
+            'data_pagamento'  => sanitize_text_field( wp_unslash( $_POST['data_pagamento'] ?? '' ) ),
+            'verbale_data'    => sanitize_text_field( wp_unslash( $_POST['verbale_data'] ?? '' ) ),
+            'pagatore_nome'   => wp_unslash( $_POST['pagatore_nome'] ?? '' ),
+            'pagatore_sede'   => wp_unslash( $_POST['pagatore_sede'] ?? '' ),
+            'pagatore_cf'     => wp_unslash( $_POST['pagatore_cf'] ?? '' ),
+            'pagatore_piva'   => wp_unslash( $_POST['pagatore_piva'] ?? '' ),
+        ] );
+        wp_safe_redirect( add_query_arg( 'msg', 'ric_saved', wp_get_referer() ) ); exit;
+    }
     if ( $action === 'archive' ) {
         Archivio::archive( $uid );
         wp_safe_redirect( add_query_arg( 'msg', 'archived', wp_get_referer() ) ); exit;
@@ -90,12 +107,15 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
     </h1>
 
     <?php
-    $notes = [ 'saved' => 'Dati salvati.', 'paid' => 'Quota segnata come pagata.', 'unpaid' => 'Quota segnata come non pagata.', 'archived' => 'Socio archiviato.', 'reactivated' => 'Socio riabilitato.', 'roles' => 'Ruoli aggiornati.' ];
+    $notes = [ 'saved' => 'Dati salvati.', 'paid' => 'Quota segnata come pagata.', 'unpaid' => 'Quota segnata come non pagata.', 'archived' => 'Socio archiviato.', 'reactivated' => 'Socio riabilitato.', 'roles' => 'Ruoli aggiornati.', 'ric_saved' => 'Dati ricevuta salvati.' ];
     if ( isset( $notes[ $msg ] ) ) {
         echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $notes[ $msg ] ) . '</p></div>';
     }
     if ( $msg === 'dup_numero' ) {
         echo '<div class="notice notice-error is-dismissible"><p>Numero socio già assegnato a un altro socio: scegline uno diverso, oppure lascia il campo vuoto per generarlo automaticamente.</p></div>';
+    }
+    if ( $msg === 'ric_dup' ) {
+        echo '<div class="notice notice-error is-dismissible"><p>Numero ricevuta già usato per quest\'anno: scegline un altro.</p></div>';
     }
     ?>
 
@@ -127,8 +147,10 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
 
             <p style="margin-top:14px">
                 <a class="button" href="<?php echo esc_url( Tessera::download_url( $uid ) ); ?>">⬇ Tessera</a>
-                <?php if ( $status === 'paid' || $status === 'expiring' ) : ?>
+                <?php $ric_row = Quote::get( $uid, $year ); if ( $ric_row && Quote::has_ricevuta( $ric_row ) ) : ?>
                     <a class="button" href="<?php echo esc_url( Ricevuta::download_url( $uid, $year ) ); ?>">⬇ Ricevuta <?php echo esc_html( (string) $year ); ?></a>
+                <?php elseif ( $status === 'paid' || $status === 'expiring' ) : ?>
+                    <span class="description">Ricevuta: compila numero e data pagamento nella sezione Quota.</span>
                 <?php endif; ?>
             </p>
         </div>
@@ -199,6 +221,31 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
                 <?php endforeach; endif; ?>
                 </tbody>
             </table>
+
+            <?php $ric = Quote::get( $uid, $year ) ?: []; $next_ric = Quote::next_ricevuta_numero( $year ); ?>
+            <h3 style="margin-top:1.2rem">Ricevuta <?php echo esc_html( (string) $year ); ?></h3>
+            <p class="description">La ricevuta si scarica solo se sono presenti <strong>numero</strong> e <strong>data di pagamento</strong>. Per i nuovi iscritti compila anche la data del verbale di approvazione.</p>
+            <form method="post">
+                <?php wp_nonce_field( 'gfoss_socio_' . $uid ); ?>
+                <input type="hidden" name="_action" value="save_ricevuta">
+                <input type="hidden" name="anno" value="<?php echo esc_attr( (string) $year ); ?>">
+                <div style="display:flex;gap:.5rem;align-items:end;flex-wrap:wrap">
+                    <label>N. ricevuta<br>
+                        <input type="number" name="ricevuta_numero" min="1" value="<?php echo esc_attr( (string) ( $ric['ricevuta_numero'] ?? '' ) ); ?>" placeholder="<?php echo esc_attr( (string) $next_ric ); ?>" style="width:80px"> / <?php echo esc_html( (string) $year ); ?></label>
+                    <label>Data pagamento<br><input type="date" name="data_pagamento" value="<?php echo esc_attr( (string) ( $ric['data_pagamento'] ?? '' ) ); ?>"></label>
+                    <label>Data verbale (nuovo iscritto)<br><input type="date" name="verbale_data" value="<?php echo esc_attr( (string) ( $ric['verbale_data'] ?? '' ) ); ?>"></label>
+                </div>
+                <fieldset style="margin-top:.7rem;border:1px solid #e2e8ec;padding:.6rem .8rem;border-radius:6px">
+                    <legend style="padding:0 .3rem;color:#4A5C6A">Pagatore (solo se diverso dal socio)</legend>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+                        <label>Denominazione<br><input type="text" name="pagatore_nome" value="<?php echo esc_attr( (string) ( $ric['pagatore_nome'] ?? '' ) ); ?>" style="width:220px"></label>
+                        <label>Sede<br><input type="text" name="pagatore_sede" value="<?php echo esc_attr( (string) ( $ric['pagatore_sede'] ?? '' ) ); ?>" style="width:240px"></label>
+                        <label>Codice fiscale<br><input type="text" name="pagatore_cf" value="<?php echo esc_attr( (string) ( $ric['pagatore_cf'] ?? '' ) ); ?>" style="width:150px"></label>
+                        <label>Partita IVA<br><input type="text" name="pagatore_piva" value="<?php echo esc_attr( (string) ( $ric['pagatore_piva'] ?? '' ) ); ?>" style="width:150px"></label>
+                    </div>
+                </fieldset>
+                <p style="margin-top:.7rem"><button type="submit" class="button button-primary">Salva dati ricevuta</button></p>
+            </form>
         </div>
     </div>
 

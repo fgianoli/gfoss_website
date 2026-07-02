@@ -219,7 +219,7 @@ class Area_Personale {
                                     <td><?php echo esc_html( $q['metodo'] ); ?></td>
                                     <td><?php echo $q['stato'] === 'paid' ? '✓ pagata' : esc_html( $q['stato'] ); ?></td>
                                     <td>
-                                        <?php if ( $q['stato'] === 'paid' ) : ?>
+                                        <?php if ( $q['stato'] === 'paid' && Quote::has_ricevuta( $q ) ) : ?>
                                             <a href="<?php echo esc_url( Ricevuta::download_url( $user->ID, (int) $q['anno'] ) ); ?>">⬇ PDF</a>
                                         <?php else : ?>
                                             <span class="gf-muted">—</span>

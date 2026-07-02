@@ -118,6 +118,8 @@ class Paypal {
                 $year    = (int) $parts[2];
                 if ( $user_id && $year ) {
                     Quote::mark_paid( $user_id, $year, 'paypal', $txn_id, 'IPN PayPal' );
+                    // Solo per i rinnovi (non i nuovi iscritti) assegniamo subito il numero ricevuta.
+                    Quote::assign_ricevuta_if_missing( $user_id, $year );
                     self::log( 'IPN: renewal paid', [ 'user' => $user_id, 'year' => $year ] );
                     return new \WP_REST_Response( 'ok', 200 );
                 }

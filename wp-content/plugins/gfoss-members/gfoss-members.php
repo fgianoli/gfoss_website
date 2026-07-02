@@ -14,11 +14,11 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_MEMBERS_VERSION',  '1.22.0' );
+define( 'GFOSS_MEMBERS_VERSION',  '1.23.0' );
 define( 'GFOSS_MEMBERS_FILE',     __FILE__ );
 define( 'GFOSS_MEMBERS_DIR',      plugin_dir_path( __FILE__ ) );
 define( 'GFOSS_MEMBERS_URL',      plugin_dir_url( __FILE__ ) );
-define( 'GFOSS_MEMBERS_DB_VER',   '7' ); // bump to trigger dbDelta on next load
+define( 'GFOSS_MEMBERS_DB_VER',   '8' ); // bump to trigger dbDelta on next load
 
 /** Minimal PSR-4-ish autoloader for our classes. */
 spl_autoload_register( static function ( $class ) {

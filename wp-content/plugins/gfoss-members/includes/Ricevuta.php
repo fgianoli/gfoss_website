@@ -50,6 +50,9 @@ class Ricevuta {
         if ( ! $row || $row['stato'] !== 'paid' ) {
             return new \WP_REST_Response( 'Nessuna quota pagata per l\'anno richiesto.', 404 );
         }
+        if ( ! Quote::has_ricevuta( $row ) ) {
+            return new \WP_REST_Response( 'Ricevuta non ancora emessa: mancano il numero progressivo e/o la data di pagamento.', 404 );
+        }
 
         $pdf = self::generate_pdf( $target, $row );
         if ( $pdf instanceof \WP_Error ) {
@@ -110,62 +113,90 @@ class Ricevuta {
     private static function render_html( int $user_id, array $row ): string {
         $u        = get_userdata( $user_id );
         $anno     = (int) $row['anno'];
-        $numero   = (string) get_user_meta( $user_id, 'gf_numero_socio', true );
-        $cf_socio = (string) get_user_meta( $user_id, 'gf_codice_fiscale', true );
-        $importo  = number_format_i18n( (float) $row['importo'], 2 );
-        $metodo   = ucfirst( (string) $row['metodo'] );
-        $data_pag = ! empty( $row['data_pagamento'] ) ? date_i18n( 'd/m/Y', strtotime( $row['data_pagamento'] ) ) : '—';
-        $num_ric  = sprintf( '%d/%d', (int) $row['id'], $anno );
-        $emessa   = date_i18n( 'd/m/Y' );
+        $importo  = number_format( (float) $row['importo'], 2, ',', '.' );
+        $data_pag = ! empty( $row['data_pagamento'] ) ? date_i18n( 'd.m.Y', strtotime( $row['data_pagamento'] ) ) : '';
+        $num_ric  = sprintf( '%d/%d', (int) $row['ricevuta_numero'], $anno );
 
-        $cf_assoc = defined( 'GFOSS_ASSOC_CF' ) ? GFOSS_ASSOC_CF : '95090860131';
-        $iban     = defined( 'GFOSS_ASSOC_IBAN' ) ? GFOSS_ASSOC_IBAN : '';
+        $cf_assoc = defined( 'GFOSS_ASSOC_CF' )   ? GFOSS_ASSOC_CF   : '95090860131';
+        $piva     = defined( 'GFOSS_ASSOC_PIVA' ) ? GFOSS_ASSOC_PIVA : 'IT03158540132';
+        $cap      = defined( 'GFOSS_ASSOC_CAP' )  ? GFOSS_ASSOC_CAP  : '35127';
 
         $e = static fn( $v ) => esc_html( (string) $v );
 
-        return '
+        $metodo_map = [ 'bonifico' => 'un bonifico', 'paypal' => 'un pagamento tramite PayPal', 'contanti' => 'un versamento in contanti', 'carta' => 'un pagamento con carta' ];
+        $metodo_txt = $metodo_map[ (string) $row['metodo'] ] ?? 'un versamento';
+
+        $nome_socio = $u ? $u->display_name : '';
+
+        // Pagatore: terzo (se impostato) oppure il socio stesso.
+        if ( ! empty( $row['pagatore_nome'] ) ) {
+            $pag = '<strong>' . $e( $row['pagatore_nome'] ) . '</strong>';
+            if ( ! empty( $row['pagatore_sede'] ) ) { $pag .= ' con sede in ' . $e( $row['pagatore_sede'] ); }
+            $ids = [];
+            if ( ! empty( $row['pagatore_cf'] ) )   { $ids[] = 'Codice Fiscale ' . $e( $row['pagatore_cf'] ); }
+            if ( ! empty( $row['pagatore_piva'] ) ) { $ids[] = 'Partita IVA ' . $e( $row['pagatore_piva'] ); }
+            if ( $ids ) { $pag .= ', ' . implode( ' e ', $ids ); }
+        } else {
+            $cf_socio = (string) get_user_meta( $user_id, 'gf_codice_fiscale', true );
+            $prov = (string) get_user_meta( $user_id, 'gf_provincia', true );
+            $ind  = trim( get_user_meta( $user_id, 'gf_indirizzo', true ) . ', ' . get_user_meta( $user_id, 'gf_cap', true ) . ' ' . get_user_meta( $user_id, 'gf_citta', true ) . ( $prov ? ' (' . $prov . ')' : '' ) );
+            $ind  = trim( $ind, ', ' );
+            $pag  = '<strong>' . $e( $nome_socio ) . '</strong>';
+            if ( $ind !== '' )  { $pag .= ' residente in ' . $e( $ind ); }
+            if ( $cf_socio )    { $pag .= ', Codice Fiscale ' . $e( $cf_socio ); }
+        }
+
+        $verbale = '';
+        if ( ! empty( $row['verbale_data'] ) ) {
+            $verbale = ' L\'iscrizione è stata approvata dal Consiglio Direttivo con verbale del ' . $e( date_i18n( 'd.m.Y', strtotime( $row['verbale_data'] ) ) ) . '.';
+        }
+
+        $num_e  = $e( $num_ric );
+        $data_e = $e( $data_pag );
+        $imp_e  = $e( $importo );
+        $anno_e = (int) $anno;
+        $cap_e  = $e( $cap );
+        $piva_e = $e( $piva );
+        $cf_e   = $e( $cf_assoc );
+        $nome_e = $e( $nome_socio );
+
+        return <<<HTML
 <style>
-  body { font-family: sans-serif; color: #0F2330; font-size: 11pt; }
-  .head { border-bottom: 2px solid #1A6FA0; padding-bottom: 8px; margin-bottom: 18px; }
-  .org { font-size: 14pt; font-weight: bold; color: #1A6FA0; }
-  .org small { display:block; font-weight: normal; color:#4A5C6A; font-size: 8.5pt; margin-top:2px; }
-  h1 { font-size: 13pt; margin: 18px 0 4px; }
-  .meta { color:#4A5C6A; font-size: 9.5pt; margin-bottom: 16px; }
-  table.kv { width:100%; border-collapse: collapse; margin: 8px 0 16px; }
-  table.kv td { padding: 6px 4px; border-bottom: 1px solid #E2E8EC; vertical-align: top; }
-  table.kv td.k { color:#4A5C6A; width: 42%; }
-  .amount { font-size: 15pt; font-weight: bold; color:#1A6FA0; }
-  .note { font-size: 8.5pt; color:#4A5C6A; margin-top: 18px; line-height: 1.45; }
-  .sign { margin-top: 28px; text-align: right; font-size: 9.5pt; color:#4A5C6A; }
+  body { font-family: sans-serif; color:#10242f; font-size:10.5pt; line-height:1.5; }
+  .head { border-bottom:2px solid #1A6FA0; padding-bottom:8px; margin-bottom:16px; }
+  .org { font-size:13pt; font-weight:bold; color:#1A6FA0; }
+  .org small { display:block; font-weight:normal; color:#4A5C6A; font-size:8pt; margin-top:2px; }
+  h1 { font-size:13pt; margin:14px 0 12px; }
+  .dichiara { text-align:center; font-weight:bold; margin:6px 0; }
+  ul { margin:6px 0 6px 0; padding-left:16px; }
+  li { margin-bottom:6px; text-align:justify; }
+  p { text-align:justify; }
+  .sign { margin-top:34px; text-align:right; }
+  .bollo { font-style:italic; color:#4A5C6A; font-size:8.5pt; margin-top:18px; }
+  .foot { border-top:1px solid #e0e0e0; margin-top:20px; padding-top:8px; text-align:center; color:#888; font-size:8pt; font-style:italic; }
 </style>
-<div class="head">
-  <div class="org">GFOSS.it APS
-    <small>Associazione Italiana per l\'Informazione Geografica Libera — Ente del Terzo Settore (RUNTS)<br>
-    Lungargine Gerolamo Rovetta 28, 35131 Padova — C.F. ' . $e( $cf_assoc ) . '</small>
-  </div>
-</div>
+<div class="head"><div class="org">GFOSS.it APS
+  <small>Lungargine Gerolamo Rovetta, 28 - {$cap_e} Padova (PD)<br>
+  Partita IVA {$piva_e} - Codice Fiscale {$cf_e}<br>www.gfoss.it – info@gfoss.it</small>
+</div></div>
 
-<h1>Ricevuta di versamento quota associativa</h1>
-<div class="meta">Ricevuta n. <strong>' . $e( $num_ric ) . '</strong> &middot; emessa il ' . $e( $emessa ) . '</div>
+<h1>Ricevuta nr. {$num_e} del {$data_e}</h1>
 
-<table class="kv">
-  <tr><td class="k">Ricevuto da</td><td><strong>' . $e( $u ? $u->display_name : '' ) . '</strong></td></tr>
-  <tr><td class="k">Codice fiscale</td><td>' . ( $cf_socio ? $e( $cf_socio ) : '—' ) . '</td></tr>
-  <tr><td class="k">Socio n.</td><td>' . ( $numero ? $e( $numero ) : '—' ) . '</td></tr>
-  <tr><td class="k">Causale</td><td>Quota associativa anno ' . $e( $anno ) . '</td></tr>
-  <tr><td class="k">Modalità di pagamento</td><td>' . $e( $metodo ) . '</td></tr>
-  <tr><td class="k">Data del pagamento</td><td>' . $e( $data_pag ) . '</td></tr>
-  <tr><td class="k">Importo</td><td class="amount">&euro; ' . $e( $importo ) . '</td></tr>
-</table>
+<p>L'Associazione di Promozione Sociale denominata <strong>GFOSS.it APS</strong> con sede in Lungargine Gerolamo Rovetta, 28 - {$cap_e} Padova (PD)</p>
+<p class="dichiara">dichiara</p>
+<p>di aver ricevuto {$metodo_txt} di <strong>{$imp_e} EUR</strong> in data {$data_e} tramite versamento sul proprio conto corrente dal {$pag}. La somma ricevuta copre la quota associativa a GFOSS.it APS per il {$anno_e} di <strong>{$nome_e}</strong>.{$verbale}</p>
 
-<div class="note">
-  Quota associativa non soggetta a IVA. Le quote e i contributi associativi non costituiscono corrispettivo
-  e sono esclusi dal campo di applicazione dell\'imposta. Il presente documento è una ricevuta di versamento
-  e non costituisce fattura. Conservare ai fini delle agevolazioni fiscali previste per gli enti del Terzo Settore.
-  ' . ( $iban ? '<br>IBAN associazione: ' . $e( $iban ) . '.' : '' ) . '
-</div>
+<p>L'ENTE dichiara inoltre la propria natura non commerciale ai sensi dell'art. 79, comma 5 del D.Lgs n.117 del 03/07/2017 e che pertanto, relativamente alle liberalità erogate, i donatori possono optare:</p>
+<ul>
+  <li><strong>Se persone fisiche:</strong> per la detrazione fiscale al 30% fino ad un massimo di € 30.000 (o al 35% fino ad un massimo di € 30.000 se ODV) ovvero dedurre la donazione dal proprio reddito complessivo dichiarato per un importo non superiore al 10% del reddito; se la deduzione risultasse maggiore, l'eccedenza può essere computata in aumento dell'importo deducibile dal reddito complessivo dei periodi di imposta successivi, ma non oltre il 4°, fino a concorrenza del suo ammontare (ai sensi dell'art. 83, del D.Lgs n.117 del 03/07/2017).</li>
+  <li><strong>Se imprese:</strong> dedurre la donazione dal proprio reddito complessivo dichiarato per un importo non superiore al 10% del reddito; se la deduzione risultasse maggiore, l'eccedenza può essere computata in aumento dell'importo deducibile dal reddito complessivo dei periodi di imposta successivi, ma non oltre il 4°, fino a concorrenza del suo ammontare (ai sensi dell'art. 83, del D.Lgs n.117 del 03/07/2017).</li>
+</ul>
 
-<div class="sign">GFOSS.it APS — Il Tesoriere</div>
-';
+<p>Ai sensi e per gli effetti del DLgs n. 193 del 2003, La informiamo che il trattamento dei Suoi dati viene effettuato per l'esclusivo perseguimento delle finalità statutarie dell'Ente.</p>
+
+<div class="sign">Firma del Tesoriere dell'Associazione</div>
+<p class="bollo">Esente da bollo ai sensi dell'Art. 82 c. 5 D.lgs. 3 luglio 2017 n. 117</p>
+<p class="foot">GFOSS.it è un'associazione non-profit nazionale per la promozione sociale del software geografico libero.<br>Per informazioni sullo statuto, le finalità e le modalità di iscrizione, si consulti il sito Internet www.gfoss.it.</p>
+HTML;
     }
 }

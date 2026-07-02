@@ -111,6 +111,68 @@ class Quote {
         );
     }
 
+    /** Riga quota (user, anno) o null. */
+    public static function get( int $user_id, int $anno ): ?array {
+        global $wpdb;
+        $row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM " . Schema::table_quote() . " WHERE user_id = %d AND anno = %d",
+            $user_id, $anno
+        ), ARRAY_A );
+        return $row ?: null;
+    }
+
+    /** Prossimo numero ricevuta dell'anno (progressivo che riparte ogni anno). */
+    public static function next_ricevuta_numero( int $anno ): int {
+        global $wpdb;
+        return 1 + (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT MAX(ricevuta_numero) FROM " . Schema::table_quote() . " WHERE anno = %d", $anno
+        ) );
+    }
+
+    /** Verifica che un numero ricevuta non sia già usato per l'anno (esclude la riga stessa). */
+    public static function ricevuta_numero_in_use( int $anno, int $numero, int $exclude_user = 0 ): bool {
+        global $wpdb;
+        return (bool) $wpdb->get_var( $wpdb->prepare(
+            "SELECT id FROM " . Schema::table_quote() . " WHERE anno = %d AND ricevuta_numero = %d AND user_id <> %d",
+            $anno, $numero, $exclude_user
+        ) );
+    }
+
+    /**
+     * Aggiorna solo i campi legati alla ricevuta (numero, data pagamento, verbale,
+     * pagatore) senza toccare stato/importo. La riga quota deve già esistere.
+     */
+    public static function save_ricevuta( int $user_id, int $anno, array $f ): bool {
+        global $wpdb;
+        $data = [];
+        foreach ( [ 'ricevuta_numero', 'data_pagamento', 'verbale_data', 'pagatore_nome', 'pagatore_sede', 'pagatore_cf', 'pagatore_piva' ] as $k ) {
+            if ( ! array_key_exists( $k, $f ) ) { continue; }
+            $v = $f[ $k ];
+            if ( $k === 'ricevuta_numero' ) {
+                $data[ $k ] = ( $v === '' || $v === null ) ? null : (int) $v;
+            } elseif ( $k === 'data_pagamento' || $k === 'verbale_data' ) {
+                $data[ $k ] = $v ?: null;
+            } else {
+                $data[ $k ] = ( $v !== '' && $v !== null ) ? sanitize_text_field( (string) $v ) : null;
+            }
+        }
+        if ( ! $data ) { return false; }
+        return (bool) $wpdb->update( Schema::table_quote(), $data, [ 'user_id' => $user_id, 'anno' => $anno ] );
+    }
+
+    /** Assegna il prossimo numero ricevuta se non già presente (usato per i rinnovi PayPal). */
+    public static function assign_ricevuta_if_missing( int $user_id, int $anno ): void {
+        $row = self::get( $user_id, $anno );
+        if ( $row && empty( $row['ricevuta_numero'] ) ) {
+            self::save_ricevuta( $user_id, $anno, [ 'ricevuta_numero' => self::next_ricevuta_numero( $anno ) ] );
+        }
+    }
+
+    /** Ci sono i dati minimi per emettere la ricevuta? (numero + data pagamento). */
+    public static function has_ricevuta( array $row ): bool {
+        return ! empty( $row['ricevuta_numero'] ) && ! empty( $row['data_pagamento'] );
+    }
+
     /** Lista quote di un singolo socio (storico). */
     public static function for_user( int $user_id ): array {
         global $wpdb;

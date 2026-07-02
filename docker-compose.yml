@@ -49,6 +49,9 @@ services:
         define('GFOSS_ASSOC_FULL_NAME', "Associazione Italiana per l'Informazione Geografica Libera");
         define('GFOSS_ASSOC_IBAN', '${GFOSS_IBAN}');
         define('GFOSS_ASSOC_BIC', 'BCITITMM');
+        define('GFOSS_ASSOC_CF', '95090860131');
+        define('GFOSS_ASSOC_PIVA', 'IT03158540132');
+        define('GFOSS_ASSOC_CAP', '35127');
         ${GFOSS_PG_HOST:+define('GFOSS_PG_HOST', '${GFOSS_PG_HOST}');}
         ${GFOSS_PG_PORT:+define('GFOSS_PG_PORT', '${GFOSS_PG_PORT}');}
         ${GFOSS_PG_ADMIN_DB:+define('GFOSS_PG_ADMIN_DB', '${GFOSS_PG_ADMIN_DB}');}
