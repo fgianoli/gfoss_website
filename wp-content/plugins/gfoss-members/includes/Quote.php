@@ -173,6 +173,19 @@ class Quote {
         return ! empty( $row['ricevuta_numero'] ) && ! empty( $row['data_pagamento'] );
     }
 
+    /** Ricevute emesse in un anno (quote con numero ricevuta), ordinate per numero. */
+    public static function ricevute_for_year( int $anno ): array {
+        global $wpdb;
+        $t = Schema::table_quote();
+        return $wpdb->get_results( $wpdb->prepare(
+            "SELECT q.*, u.display_name, u.user_email
+             FROM $t q LEFT JOIN {$wpdb->users} u ON u.ID = q.user_id
+             WHERE q.anno = %d AND q.ricevuta_numero IS NOT NULL
+             ORDER BY q.ricevuta_numero ASC",
+            $anno
+        ), ARRAY_A ) ?: [];
+    }
+
     /** Lista quote di un singolo socio (storico). */
     public static function for_user( int $user_id ): array {
         global $wpdb;

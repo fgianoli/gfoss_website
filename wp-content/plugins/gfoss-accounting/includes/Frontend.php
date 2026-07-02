@@ -19,6 +19,25 @@ class Frontend {
         add_action( 'admin_post_gfoss_acc_fe_delete',   [ __CLASS__, 'handle_delete' ] );
         add_action( 'admin_post_gfoss_acc_cassa_save',  [ __CLASS__, 'handle_cassa_save' ] );
         add_action( 'admin_post_gfoss_acc_bilancio_pdf',[ __CLASS__, 'handle_bilancio_pdf' ] );
+        add_action( 'admin_post_gfoss_acc_ricevute_csv',[ __CLASS__, 'handle_ricevute_csv' ] );
+    }
+
+    public static function handle_ricevute_csv(): void {
+        if ( ! self::can_view() ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_acc_fe' );
+        $year = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
+        $rows = \GFOSS_Members\Quote::ricevute_for_year( $year );
+        nocache_headers();
+        header( 'Content-Type: text/csv; charset=UTF-8' );
+        header( 'Content-Disposition: attachment; filename="registro-ricevute-' . $year . '.csv"' );
+        $out = fopen( 'php://output', 'w' );
+        fwrite( $out, "\xEF\xBB\xBF" ); // BOM UTF-8 per Excel
+        fputcsv( $out, [ 'Numero', 'Anno', 'Data pagamento', 'Socio', 'Email', 'Importo', 'Metodo', 'Data verbale', 'Pagatore' ] );
+        foreach ( $rows as $r ) {
+            fputcsv( $out, [ $r['ricevuta_numero'], $r['anno'], $r['data_pagamento'], $r['display_name'], $r['user_email'], number_format( (float) $r['importo'], 2, ',', '' ), $r['metodo'], $r['verbale_data'], $r['pagatore_nome'] ] );
+        }
+        fclose( $out );
+        exit;
     }
 
     public static function handle_cassa_save(): void {
@@ -206,6 +225,27 @@ class Frontend {
             echo '<p>Cassa iniziale ' . (int) $year . ': <strong>' . esc_html( $eur( Bilancio::cassa_iniziale( $year ) ) ) . '</strong></p>';
         }
         echo '<form method="post" action="' . $action . '">' . $nonce . '<input type="hidden" name="action" value="gfoss_acc_bilancio_pdf"><input type="hidden" name="anno" value="' . (int) $year . '"><button class="gf-btn gf-btn--primary">⬇ Genera Rendiconto per cassa (PDF)</button></form>';
+        echo '</section>';
+
+        // Registro ricevute emesse
+        $ric_list = \GFOSS_Members\Quote::ricevute_for_year( $year );
+        $can_dl   = current_user_can( Roles::CAP_MANAGE_QUOTE ) || current_user_can( Roles::CAP_MANAGE_SOCI );
+        $tot_ric  = array_sum( array_map( static fn( $r ) => (float) $r['importo'], $ric_list ) );
+        echo '<section class="gf-card"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem"><h2 style="margin:0">Registro ricevute ' . (int) $year . ' (' . count( $ric_list ) . ')</h2>';
+        echo '<form method="post" action="' . $action . '" style="margin:0">' . $nonce . '<input type="hidden" name="action" value="gfoss_acc_ricevute_csv"><input type="hidden" name="anno" value="' . (int) $year . '"><button class="gf-btn gf-btn--ghost gf-btn--sm"' . ( $ric_list ? '' : ' disabled' ) . '>⬇ Esporta CSV</button></form></div>';
+        echo '<div class="gf-tablewrap"><table class="gf-table"><thead><tr><th>N.</th><th>Data</th><th>Socio</th><th style="text-align:right">Importo</th><th>Metodo</th>' . ( $can_dl ? '<th></th>' : '' ) . '</tr></thead><tbody>';
+        if ( ! $ric_list ) { echo '<tr><td colspan="6" class="gf-muted">Nessuna ricevuta emessa per il ' . (int) $year . '.</td></tr>'; }
+        foreach ( $ric_list as $r ) {
+            echo '<tr><td><strong>' . (int) $r['ricevuta_numero'] . '/' . (int) $year . '</strong></td>';
+            echo '<td>' . esc_html( $r['data_pagamento'] ? date_i18n( 'd/m/Y', strtotime( $r['data_pagamento'] ) ) : '—' ) . '</td>';
+            echo '<td>' . esc_html( (string) $r['display_name'] ) . '</td>';
+            echo '<td style="text-align:right">' . esc_html( $eur( $r['importo'] ) ) . '</td>';
+            echo '<td>' . esc_html( (string) $r['metodo'] ) . '</td>';
+            if ( $can_dl ) { echo '<td><a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( \GFOSS_Members\Ricevuta::download_url( (int) $r['user_id'], (int) $year ) ) . '">PDF</a></td>'; }
+            echo '</tr>';
+        }
+        echo '</tbody></table></div>';
+        echo '<p class="gf-muted" style="margin-top:.5rem">Totale importi ricevute: <strong>' . esc_html( $eur( $tot_ric ) ) . '</strong></p>';
         echo '</section>';
 
         echo '</div>';

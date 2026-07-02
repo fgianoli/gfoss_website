@@ -42,7 +42,7 @@ class Ricevuta {
         $target  = (int) ( $req['user'] ?: $current );
         $anno    = (int) ( $req['anno'] ?: gmdate( 'Y' ) );
 
-        if ( $target !== $current && ! current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
+        if ( $target !== $current && ! current_user_can( Roles::CAP_MANAGE_SOCI ) && ! current_user_can( Roles::CAP_MANAGE_QUOTE ) ) {
             return new \WP_REST_Response( 'forbidden', 403 );
         }
 
