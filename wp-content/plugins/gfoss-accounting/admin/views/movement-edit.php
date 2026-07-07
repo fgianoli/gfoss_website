@@ -85,9 +85,10 @@ wp_enqueue_media();
     <script>
     (function(){
         var b = document.getElementById('gfoss-acc-pick');
-        if (!b || !window.wp || !wp.media) return;
+        if (!b) return;
         b.addEventListener('click', function(e){
             e.preventDefault();
+            if (!window.wp || !wp.media) { window.alert('Media Library non disponibile: ricarica la pagina.'); return; }
             var f = wp.media({ title:'Scegli ricevuta/fattura', multiple:false }).on('select', function(){
                 var att = f.state().get('selection').first().toJSON();
                 document.getElementById('documento_url').value = att.url;

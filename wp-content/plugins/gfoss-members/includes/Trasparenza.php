@@ -31,6 +31,7 @@ class Trasparenza {
     public static function init(): void {
         add_action( 'init',                   [ __CLASS__, 'register_cpt' ] );
         add_action( 'add_meta_boxes',         [ __CLASS__, 'metabox' ] );
+        add_action( 'admin_enqueue_scripts',  [ __CLASS__, 'enqueue_media' ] );
         add_action( 'save_post_' . self::CPT, [ __CLASS__, 'save' ], 10, 2 );
         add_shortcode( 'gfoss_bilanci',       [ __CLASS__, 'shortcode' ] );
         add_filter( 'manage_' . self::CPT . '_posts_columns',       [ __CLASS__, 'columns' ] );
@@ -69,6 +70,15 @@ class Trasparenza {
         add_meta_box( 'gfoss_pubbdoc_meta', 'Dettagli documento', [ __CLASS__, 'render_metabox' ], self::CPT, 'normal', 'high' );
     }
 
+    /** Carica gli script della Media Library sulle schermate di modifica del CPT. */
+    public static function enqueue_media( string $hook ): void {
+        if ( ! in_array( $hook, [ 'post.php', 'post-new.php' ], true ) ) { return; }
+        $screen = get_current_screen();
+        if ( $screen && $screen->post_type === self::CPT ) {
+            wp_enqueue_media();
+        }
+    }
+
     public static function render_metabox( \WP_Post $post ): void {
         $tipo   = (string) get_post_meta( $post->ID, '_gf_tipo', true ) ?: 'bilancio_consuntivo';
         $anno   = (string) get_post_meta( $post->ID, '_gf_anno', true );
@@ -105,19 +115,20 @@ class Trasparenza {
             <label style="font-weight:600;display:block;margin-bottom:4px">File PDF</label>
             <input type="number" name="gf_file" id="gf_file_id" value="<?php echo esc_attr( (string) $att_id ); ?>" placeholder="ID allegato" style="width:140px">
             <button type="button" class="button" id="gfoss-pubbdoc-pick">Scegli dalla Media Library</button>
-            <?php if ( $att ) : ?>
-                <br><small><a href="<?php echo esc_url( $att ); ?>" target="_blank"><?php echo esc_html( basename( $att ) ); ?></a></small>
-            <?php endif; ?>
+            <br><small><a id="gfoss-pubbdoc-filename" href="<?php echo esc_url( $att ?: '#' ); ?>" target="_blank" style="<?php echo $att ? '' : 'display:none'; ?>"><?php echo esc_html( $att ? basename( $att ) : '' ); ?></a></small>
         </p>
         <script>
         (function(){
             var b = document.getElementById('gfoss-pubbdoc-pick');
-            if (!b || !window.wp || !wp.media) return;
+            if (!b) return;
             b.addEventListener('click', function(e){
                 e.preventDefault();
-                var f = wp.media({ title:'Scegli file', library:{ type:'application/pdf' }, multiple:false }).on('select', function(){
+                if (!window.wp || !wp.media) { window.alert('Media Library non disponibile: ricarica la pagina.'); return; }
+                var f = wp.media({ title:'Scegli file PDF', library:{ type:'application/pdf' }, multiple:false }).on('select', function(){
                     var att = f.state().get('selection').first().toJSON();
                     document.getElementById('gf_file_id').value = att.id;
+                    var link = document.getElementById('gfoss-pubbdoc-filename');
+                    if (link) { link.textContent = att.filename || att.title || ('#' + att.id); link.href = att.url || '#'; link.style.display = 'inline'; }
                 });
                 f.open();
             });

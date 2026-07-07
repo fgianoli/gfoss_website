@@ -19,6 +19,7 @@ class Doc_Riservato {
     public static function init(): void {
         add_action( 'init',                [ __CLASS__, 'register_cpt' ] );
         add_action( 'add_meta_boxes',      [ __CLASS__, 'metabox' ] );
+        add_action( 'admin_enqueue_scripts', [ __CLASS__, 'enqueue_media' ] );
         add_action( 'save_post_' . self::CPT, [ __CLASS__, 'save' ], 10, 2 );
         add_action( 'rest_api_init',       [ __CLASS__, 'register_routes' ] );
         add_shortcode( 'gfoss_documenti_riservati', [ __CLASS__, 'shortcode' ] );
@@ -59,6 +60,14 @@ class Doc_Riservato {
         add_meta_box( 'gfoss_doc_meta', 'Allegato e categoria', [ __CLASS__, 'render_metabox' ], self::CPT, 'side', 'high' );
     }
 
+    public static function enqueue_media( string $hook ): void {
+        if ( ! in_array( $hook, [ 'post.php', 'post-new.php' ], true ) ) { return; }
+        $screen = get_current_screen();
+        if ( $screen && $screen->post_type === self::CPT ) {
+            wp_enqueue_media();
+        }
+    }
+
     public static function render_metabox( \WP_Post $post ): void {
         $att_id = (int) get_post_meta( $post->ID, '_gfoss_doc_file', true );
         $cat    = (string) get_post_meta( $post->ID, '_gfoss_doc_cat', true );
@@ -80,9 +89,10 @@ class Doc_Riservato {
         <script>
         (function(){
             var b = document.getElementById('gfoss-doc-pick');
-            if (!b || !window.wp || !wp.media) return;
+            if (!b) return;
             b.addEventListener('click', function(e){
                 e.preventDefault();
+                if (!window.wp || !wp.media) { window.alert('Media Library non disponibile: ricarica la pagina.'); return; }
                 var f = wp.media({ title:'Scegli file', multiple:false }).on('select', function(){
                     var att = f.state().get('selection').first().toJSON();
                     document.querySelector('input[name="gfoss_doc_file"]').value = att.id;
