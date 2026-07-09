@@ -142,6 +142,7 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
                     echo esc_html( implode( ', ', $names ) );
                 ?></td></tr>
                 <tr><th>Codice fiscale</th><td><code><?php echo esc_html( (string) get_user_meta( $uid, 'gf_codice_fiscale', true ) ); ?></code></td></tr>
+                <tr><th>Indirizzo</th><td><?php echo esc_html( trim( (string) get_user_meta( $uid, 'gf_indirizzo', true ) . ' ' . (string) get_user_meta( $uid, 'gf_cap', true ) ) ?: '—' ); ?></td></tr>
                 <tr><th>Città</th><td><?php echo esc_html( trim( get_user_meta( $uid, 'gf_citta', true ) . ' ' . ( get_user_meta( $uid, 'gf_provincia', true ) ? '(' . get_user_meta( $uid, 'gf_provincia', true ) . ')' : '' ) ) ); ?></td></tr>
                 <tr><th>Iscritto dal</th><td><?php echo esc_html( (string) get_user_meta( $uid, 'gf_data_ammissione', true ) ?: '—' ); ?></td></tr>
             </tbody></table>
