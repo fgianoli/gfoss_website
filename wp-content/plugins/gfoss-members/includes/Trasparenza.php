@@ -247,18 +247,28 @@ class Trasparenza {
         echo '<div class="gf-trasparenza">';
 
         if ( $mostra !== 'verbali' ) {
+            // Il bilancio PREVENTIVO è riservato ai soci; il consuntivo è pubblico.
+            $is_socio = is_user_logged_in() && gfoss_members_is_socio( get_current_user_id() );
             echo '<section class="gf-trasparenza__col"><h2>Bilanci</h2>';
             if ( ! $bilanci ) {
                 echo '<p class="gf-muted">Non ci sono ancora bilanci pubblicati.</p>';
             } else {
                 echo '<ul class="gf-doclist">';
                 foreach ( $bilanci as $anno => $set ) {
+                    $has_cons = ! empty( $set['bilancio_consuntivo'] );
+                    // Per il pubblico mostra la riga solo se c'è il consuntivo.
+                    if ( ! $is_socio && ! $has_cons ) { continue; }
                     echo '<li><strong>' . esc_html( (string) $anno ) . '</strong><span class="gf-doclist__links">';
                     echo self::link( $set['bilancio_consuntivo'] ?? null, 'Consuntivo' );
-                    echo self::link( $set['bilancio_preventivo'] ?? null, 'Preventivo' );
+                    if ( $is_socio ) {
+                        echo self::link( $set['bilancio_preventivo'] ?? null, 'Preventivo' );
+                    }
                     echo '</span></li>';
                 }
                 echo '</ul>';
+                if ( $is_socio ) {
+                    echo '<p class="gf-muted" style="font-size:.85em">Il bilancio <strong>preventivo</strong> è visibile solo ai soci; il consuntivo approvato è pubblico.</p>';
+                }
             }
             echo '</section>';
         }
