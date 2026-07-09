@@ -34,7 +34,7 @@ class Frontend {
         fwrite( $out, "\xEF\xBB\xBF" ); // BOM UTF-8 per Excel
         fputcsv( $out, [ 'Numero', 'Anno', 'Data pagamento', 'Socio', 'Email', 'Importo', 'Metodo', 'Data verbale', 'Pagatore' ] );
         foreach ( $rows as $r ) {
-            fputcsv( $out, [ $r['ricevuta_numero'], $r['anno'], $r['data_pagamento'], $r['display_name'], $r['user_email'], number_format( (float) $r['importo'], 2, ',', '' ), $r['metodo'], $r['verbale_data'], $r['pagatore_nome'] ] );
+            fputcsv( $out, [ $r['ricevuta_numero'], $r['anno'], $r['data_pagamento'], $r['display_name'], $r['user_email'], number_format( (float) $r['importo'], 2, ',', '' ), \GFOSS_Members\Quote::metodo_label( (string) $r['metodo'] ), $r['verbale_data'], $r['pagatore_nome'] ] );
         }
         fclose( $out );
         exit;
@@ -240,7 +240,7 @@ class Frontend {
             echo '<td>' . esc_html( $r['data_pagamento'] ? date_i18n( 'd/m/Y', strtotime( $r['data_pagamento'] ) ) : '—' ) . '</td>';
             echo '<td>' . esc_html( (string) $r['display_name'] ) . '</td>';
             echo '<td style="text-align:right">' . esc_html( $eur( $r['importo'] ) ) . '</td>';
-            echo '<td>' . esc_html( (string) $r['metodo'] ) . '</td>';
+            echo '<td>' . esc_html( \GFOSS_Members\Quote::metodo_label( (string) $r['metodo'] ) ) . '</td>';
             if ( $can_dl ) { echo '<td><a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( \GFOSS_Members\Ricevuta::download_url( (int) $r['user_id'], (int) $year ) ) . '">PDF</a></td>'; }
             echo '</tr>';
         }

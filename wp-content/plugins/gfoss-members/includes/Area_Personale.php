@@ -216,7 +216,7 @@ class Area_Personale {
                                 <tr>
                                     <td><?php echo esc_html( $q['anno'] ); ?></td>
                                     <td><?php echo esc_html( number_format_i18n( (float) $q['importo'], 2 ) ); ?> €</td>
-                                    <td><?php echo esc_html( $q['metodo'] ); ?></td>
+                                    <td><?php echo esc_html( Quote::metodo_label( (string) $q['metodo'] ) ); ?></td>
                                     <td><?php echo $q['stato'] === 'paid' ? '✓ pagata' : esc_html( $q['stato'] ); ?></td>
                                     <td>
                                         <?php if ( $q['stato'] === 'paid' && Quote::has_ricevuta( $q ) ) : ?>

@@ -19,6 +19,22 @@ class Quote {
         return defined( 'GFOSS_QUOTA_AMOUNT' ) ? (float) GFOSS_QUOTA_AMOUNT : 30.0;
     }
 
+    /** Canali di pagamento (slug => etichetta) per i menu. */
+    public static function metodi(): array {
+        return [
+            'paypal' => 'PayPal',
+            'banca'  => 'Banca (bonifico)',
+            'cassa'  => 'Cassa (contanti)',
+            'altro'  => 'Altro',
+        ];
+    }
+
+    /** Etichetta leggibile di un canale, gestendo anche i valori storici. */
+    public static function metodo_label( string $slug ): string {
+        $legacy = [ 'bonifico' => 'Banca (bonifico)', 'contanti' => 'Cassa (contanti)', 'carta' => 'Carta' ];
+        return self::metodi()[ $slug ] ?? ( $legacy[ $slug ] ?? ucfirst( $slug ) );
+    }
+
     /** @return string 'paid'|'pending'|'expiring'|'expired'|'unknown' */
     public static function status_for( int $user_id, int $year ): string {
         global $wpdb;
@@ -81,12 +97,12 @@ class Quote {
         return (int) $wpdb->insert_id;
     }
 
-    public static function mark_paid( int $user_id, int $anno, string $metodo, ?string $transaction_ref = null, ?string $note = null, ?float $amount = null ): int {
+    public static function mark_paid( int $user_id, int $anno, string $metodo, ?string $transaction_ref = null, ?string $note = null, ?float $amount = null, ?string $data_pagamento = null ): int {
         $data = [
             'stato'           => 'paid',
             'metodo'          => $metodo,
             'transaction_ref' => $transaction_ref,
-            'data_pagamento'  => gmdate( 'Y-m-d' ),
+            'data_pagamento'  => $data_pagamento ?: gmdate( 'Y-m-d' ),
             'note'            => $note,
         ];
         if ( $amount !== null ) { $data['importo'] = $amount; }
@@ -99,6 +115,21 @@ class Quote {
 
         do_action( 'gfoss_members_quota_paid', $id, $user_id, $anno, $metodo, $transaction_ref );
         return $id;
+    }
+
+    /**
+     * Aggiorna un record quota esistente (importo, canale, data, stato) senza
+     * toccare i campi ricevuta. Non crea la riga se non esiste.
+     */
+    public static function update_record( int $user_id, int $anno, array $f ): bool {
+        global $wpdb;
+        $data = [];
+        if ( array_key_exists( 'importo', $f ) )        { $data['importo'] = round( (float) str_replace( ',', '.', (string) $f['importo'] ), 2 ); }
+        if ( array_key_exists( 'metodo', $f ) )         { $data['metodo'] = sanitize_key( (string) $f['metodo'] ); }
+        if ( array_key_exists( 'stato', $f ) )          { $data['stato'] = in_array( $f['stato'], [ 'paid', 'pending', 'refunded' ], true ) ? $f['stato'] : 'pending'; }
+        if ( array_key_exists( 'data_pagamento', $f ) ) { $data['data_pagamento'] = $f['data_pagamento'] ?: null; }
+        if ( ! $data ) { return false; }
+        return (bool) $wpdb->update( Schema::table_quote(), $data, [ 'user_id' => $user_id, 'anno' => $anno ] );
     }
 
     /** Segna come NON pagata (pending) la quota di un anno, se esiste. */

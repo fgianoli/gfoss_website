@@ -24,9 +24,16 @@ class Trasparenza {
     public const TIPI = [
         'bilancio_consuntivo' => 'Bilancio consuntivo',
         'bilancio_preventivo' => 'Bilancio preventivo',
-        'verbale'             => "Verbale d'assemblea",
+        'verbale_assemblea'   => 'Verbale assemblea soci',
+        'verbale_direttivo'   => 'Verbale direttivo',
         'altro'               => 'Altro documento',
     ];
+
+    /** Etichetta del tipo, gestendo il valore storico 'verbale'. */
+    public static function tipo_label( string $t ): string {
+        if ( $t === 'verbale' ) { return 'Verbale assemblea soci'; }
+        return self::TIPI[ $t ] ?? '—';
+    }
 
     public static function init(): void {
         add_action( 'init',                   [ __CLASS__, 'register_cpt' ] );
@@ -81,6 +88,7 @@ class Trasparenza {
 
     public static function render_metabox( \WP_Post $post ): void {
         $tipo   = (string) get_post_meta( $post->ID, '_gf_tipo', true ) ?: 'bilancio_consuntivo';
+        if ( $tipo === 'verbale' ) { $tipo = 'verbale_assemblea'; } // valore storico
         $anno   = (string) get_post_meta( $post->ID, '_gf_anno', true );
         $data   = (string) get_post_meta( $post->ID, '_gf_data', true );
         $luogo  = (string) get_post_meta( $post->ID, '_gf_luogo', true );
@@ -168,7 +176,7 @@ class Trasparenza {
     public static function column_value( string $col, int $post_id ): void {
         if ( $col === 'gf_tipo' ) {
             $t = (string) get_post_meta( $post_id, '_gf_tipo', true );
-            echo esc_html( self::TIPI[ $t ] ?? '—' );
+            echo esc_html( self::tipo_label( $t ) );
         }
         if ( $col === 'gf_anno' ) {
             echo esc_html( (string) ( (int) get_post_meta( $post_id, '_gf_anno', true ) ?: '—' ) );
@@ -192,24 +200,26 @@ class Trasparenza {
             'post_status'    => 'publish',
         ] );
 
-        $bilanci = [];   // anno => [ consuntivo => doc, preventivo => doc ]
-        $verbali = [];
+        $bilanci  = [];   // anno => [ consuntivo => doc, preventivo => doc ]
+        $verb_ass = [];   // verbali assemblea soci (incl. valore storico 'verbale')
+        $verb_dir = [];   // verbali direttivo
         foreach ( $docs as $d ) {
             $tipo = (string) get_post_meta( $d->ID, '_gf_tipo', true );
             $anno = (int) get_post_meta( $d->ID, '_gf_anno', true );
-            if ( $tipo === 'verbale' ) {
-                $verbali[] = $d;
+            if ( $tipo === 'verbale' || $tipo === 'verbale_assemblea' ) {
+                $verb_ass[] = $d;
+            } elseif ( $tipo === 'verbale_direttivo' ) {
+                $verb_dir[] = $d;
             } elseif ( $tipo === 'bilancio_consuntivo' || $tipo === 'bilancio_preventivo' ) {
                 $bilanci[ $anno ][ $tipo ] = $d;
             }
         }
         krsort( $bilanci );
-        usort( $verbali, static function ( $a, $b ) {
-            return strcmp(
-                (string) get_post_meta( $b->ID, '_gf_data', true ),
-                (string) get_post_meta( $a->ID, '_gf_data', true )
-            );
-        } );
+        $by_data = static function ( $a, $b ) {
+            return strcmp( (string) get_post_meta( $b->ID, '_gf_data', true ), (string) get_post_meta( $a->ID, '_gf_data', true ) );
+        };
+        usort( $verb_ass, $by_data );
+        usort( $verb_dir, $by_data );
 
         ob_start();
         echo '<div class="gf-trasparenza">';
@@ -232,28 +242,33 @@ class Trasparenza {
         }
 
         if ( $mostra !== 'bilanci' ) {
-            echo '<section class="gf-trasparenza__col"><h2>Verbali d\'assemblea</h2>';
-            if ( ! $verbali ) {
-                echo '<p class="gf-muted">Non ci sono ancora verbali pubblicati.</p>';
-            } else {
-                echo '<ul class="gf-doclist">';
-                foreach ( $verbali as $d ) {
-                    $luogo = (string) get_post_meta( $d->ID, '_gf_luogo', true );
-                    $data  = (string) get_post_meta( $d->ID, '_gf_data', true );
-                    $when  = $data ? date_i18n( 'd/m/Y', strtotime( $data ) ) : '';
-                    $label = esc_html( $d->post_title );
-                    if ( $luogo ) { $label .= ' — ' . esc_html( $luogo ); }
-                    echo '<li>' . self::link( $d, $label, true )
-                       . ( $when ? ' <small class="gf-muted">' . esc_html( $when ) . '</small>' : '' )
-                       . '</li>';
-                }
-                echo '</ul>';
-            }
-            echo '</section>';
+            self::render_verbali_list( $verb_ass, "Verbali dell'assemblea dei soci" );
+            self::render_verbali_list( $verb_dir, 'Verbali del Consiglio Direttivo' );
         }
 
         echo '</div>';
         return ob_get_clean();
+    }
+
+    private static function render_verbali_list( array $list, string $titolo ): void {
+        echo '<section class="gf-trasparenza__col"><h2>' . esc_html( $titolo ) . '</h2>';
+        if ( ! $list ) {
+            echo '<p class="gf-muted">Non ci sono ancora documenti pubblicati.</p>';
+        } else {
+            echo '<ul class="gf-doclist">';
+            foreach ( $list as $d ) {
+                $luogo = (string) get_post_meta( $d->ID, '_gf_luogo', true );
+                $data  = (string) get_post_meta( $d->ID, '_gf_data', true );
+                $when  = $data ? date_i18n( 'd/m/Y', strtotime( $data ) ) : '';
+                $label = esc_html( $d->post_title );
+                if ( $luogo ) { $label .= ' — ' . esc_html( $luogo ); }
+                echo '<li>' . self::link( $d, $label, true )
+                   . ( $when ? ' <small class="gf-muted">' . esc_html( $when ) . '</small>' : '' )
+                   . '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '</section>';
     }
 
     /** Link a un file allegato (pubblico). $raw=true se $label è già escaped. */

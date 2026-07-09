@@ -19,8 +19,9 @@ class Soci_Frontend {
 
     public static function init(): void {
         add_shortcode( 'gfoss_gestione_soci', [ __CLASS__, 'render' ] );
-        add_action( 'admin_post_gfoss_soci_quota',    [ __CLASS__, 'handle_quota' ] );
-        add_action( 'admin_post_gfoss_soci_ricevuta', [ __CLASS__, 'handle_ricevuta' ] );
+        add_action( 'admin_post_gfoss_soci_quota',      [ __CLASS__, 'handle_quota' ] );
+        add_action( 'admin_post_gfoss_soci_quota_edit', [ __CLASS__, 'handle_quota_edit' ] );
+        add_action( 'admin_post_gfoss_soci_ricevuta',   [ __CLASS__, 'handle_ricevuta' ] );
         add_action( 'admin_post_gfoss_soci_meta',     [ __CLASS__, 'handle_meta' ] );
         add_action( 'admin_post_gfoss_soci_roles',    [ __CLASS__, 'handle_roles' ] );
         add_action( 'admin_post_gfoss_soci_archive',  [ __CLASS__, 'handle_archive' ] );
@@ -56,12 +57,26 @@ class Soci_Frontend {
         if ( ( $_POST['op'] ?? '' ) === 'paid' ) {
             $amount = (float) str_replace( ',', '.', (string) ( $_POST['importo'] ?? '' ) );
             if ( $amount <= 0 ) { $amount = Quote::default_amount(); }
-            $metodo = sanitize_key( (string) ( $_POST['metodo'] ?? 'bonifico' ) );
-            Quote::mark_paid( $uid, $anno, $metodo, null, 'Console soci (front-end)', $amount );
+            $metodo   = sanitize_key( (string) ( $_POST['metodo'] ?? 'banca' ) );
+            $data_pag = sanitize_text_field( wp_unslash( $_POST['data_pagamento'] ?? '' ) ) ?: null;
+            Quote::mark_paid( $uid, $anno, $metodo, null, 'Console soci (front-end)', $amount, $data_pag );
         } else {
             Quote::mark_unpaid( $uid, $anno );
         }
         self::back( (int) ( $_POST['detail'] ?? 0 ) ? $uid : 0, 'quota' );
+    }
+
+    public static function handle_quota_edit(): void {
+        if ( ! self::can_quota() ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_soci' );
+        $uid = (int) ( $_POST['uid'] ?? 0 );
+        Quote::update_record( $uid, (int) ( $_POST['anno'] ?? 0 ), [
+            'importo'        => (string) ( $_POST['importo'] ?? '' ),
+            'metodo'         => sanitize_key( (string) ( $_POST['metodo'] ?? '' ) ),
+            'stato'          => sanitize_key( (string) ( $_POST['stato'] ?? 'paid' ) ),
+            'data_pagamento' => sanitize_text_field( wp_unslash( $_POST['data_pagamento'] ?? '' ) ),
+        ] );
+        self::back( $uid, 'quota' );
     }
 
     public static function handle_ricevuta(): void {
@@ -251,17 +266,39 @@ class Soci_Frontend {
         if ( $can_q ) {
             echo '<form method="post" action="' . $action . '" style="display:flex;gap:.5rem;align-items:end;flex-wrap:wrap;margin-bottom:.8rem">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_quota"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="detail" value="1"><input type="hidden" name="anno" value="' . $year . '"><input type="hidden" name="op" value="paid">';
             echo '<label class="gf-field" style="max-width:110px"><span class="gf-field__lbl">Importo €</span><input type="text" name="importo" value="' . esc_attr( number_format( Quote::default_amount(), 2, '.', '' ) ) . '"></label>';
-            echo '<label class="gf-field" style="max-width:150px"><span class="gf-field__lbl">Metodo</span><select name="metodo"><option value="bonifico">Bonifico</option><option value="contanti">Contanti</option><option value="paypal">PayPal</option><option value="carta">Carta</option><option value="altro">Altro</option></select></label>';
+            echo '<label class="gf-field" style="max-width:170px"><span class="gf-field__lbl">Canale</span><select name="metodo">';
+            foreach ( Quote::metodi() as $mk => $mv ) { echo '<option value="' . esc_attr( $mk ) . '">' . esc_html( $mv ) . '</option>'; }
+            echo '</select></label>';
+            echo '<label class="gf-field" style="max-width:160px"><span class="gf-field__lbl">Data pagamento</span><input type="date" name="data_pagamento" value="' . esc_attr( gmdate( 'Y-m-d' ) ) . '"></label>';
             echo '<button class="gf-btn gf-btn--primary">Segna pagata</button></form>';
             if ( in_array( $st, [ 'paid', 'expiring' ], true ) ) {
                 echo '<form method="post" action="' . $action . '" style="margin-bottom:1rem">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_quota"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="detail" value="1"><input type="hidden" name="anno" value="' . $year . '"><input type="hidden" name="op" value="unpaid"><button class="gf-btn gf-btn--ghost gf-btn--sm">Segna non pagata</button></form>';
             }
         }
         $storico = Quote::for_user( $uid );
-        echo '<div class="gf-tablewrap"><table class="gf-table"><thead><tr><th>Anno</th><th>Importo</th><th>Metodo</th><th>Stato</th></tr></thead><tbody>';
-        if ( ! $storico ) { echo '<tr><td colspan="4" class="gf-muted">Nessun pagamento.</td></tr>'; }
-        else { foreach ( $storico as $r ) { echo '<tr><td>' . esc_html( $r['anno'] ) . '</td><td>' . esc_html( number_format_i18n( (float) $r['importo'], 2 ) ) . ' €</td><td>' . esc_html( $r['metodo'] ) . '</td><td>' . ( $r['stato'] === 'paid' ? '✓ pagata' : esc_html( $r['stato'] ) ) . '</td></tr>'; } }
-        echo '</tbody></table></div></section>';
+        echo '<h3 style="margin-top:1rem">Storico' . ( $can_q ? ' e modifica' : '' ) . '</h3>';
+        if ( ! $storico ) {
+            echo '<p class="gf-muted">Nessun pagamento.</p>';
+        } elseif ( $can_q ) {
+            foreach ( $storico as $r ) {
+                $opts = Quote::metodi();
+                if ( $r['metodo'] !== '' && ! isset( $opts[ $r['metodo'] ] ) ) { $opts[ $r['metodo'] ] = Quote::metodo_label( $r['metodo'] ); }
+                echo '<form method="post" action="' . $action . '" style="display:flex;gap:.4rem;align-items:end;flex-wrap:wrap;margin-bottom:.5rem">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_quota_edit"><input type="hidden" name="uid" value="' . $uid . '"><input type="hidden" name="anno" value="' . (int) $r['anno'] . '">';
+                echo '<label class="gf-field" style="max-width:64px"><span class="gf-field__lbl">Anno</span><input type="text" value="' . (int) $r['anno'] . '" disabled></label>';
+                echo '<label class="gf-field" style="max-width:90px"><span class="gf-field__lbl">Importo €</span><input type="text" name="importo" value="' . esc_attr( number_format( (float) $r['importo'], 2, '.', '' ) ) . '"></label>';
+                echo '<label class="gf-field" style="max-width:170px"><span class="gf-field__lbl">Canale</span><select name="metodo">';
+                foreach ( $opts as $mk => $mv ) { echo '<option value="' . esc_attr( $mk ) . '" ' . selected( $r['metodo'], $mk, false ) . '>' . esc_html( $mv ) . '</option>'; }
+                echo '</select></label>';
+                echo '<label class="gf-field" style="max-width:150px"><span class="gf-field__lbl">Stato</span><select name="stato"><option value="paid" ' . selected( $r['stato'], 'paid', false ) . '>Pagata</option><option value="pending" ' . selected( $r['stato'], 'pending', false ) . '>Non pagata</option></select></label>';
+                echo '<label class="gf-field" style="max-width:160px"><span class="gf-field__lbl">Data</span><input type="date" name="data_pagamento" value="' . esc_attr( (string) $r['data_pagamento'] ) . '"></label>';
+                echo '<button class="gf-btn gf-btn--ghost gf-btn--sm">Salva</button></form>';
+            }
+        } else {
+            echo '<div class="gf-tablewrap"><table class="gf-table"><thead><tr><th>Anno</th><th>Importo</th><th>Canale</th><th>Stato</th></tr></thead><tbody>';
+            foreach ( $storico as $r ) { echo '<tr><td>' . esc_html( $r['anno'] ) . '</td><td>' . esc_html( number_format_i18n( (float) $r['importo'], 2 ) ) . ' €</td><td>' . esc_html( Quote::metodo_label( (string) $r['metodo'] ) ) . '</td><td>' . ( $r['stato'] === 'paid' ? '✓ pagata' : esc_html( $r['stato'] ) ) . '</td></tr>'; }
+            echo '</tbody></table></div>';
+        }
+        echo '</section>';
 
         // Ricevuta (solo tesoreria)
         if ( $can_q ) {

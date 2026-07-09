@@ -44,14 +44,24 @@ if ( ! empty( $_POST['_action'] ) && current_user_can( Roles::CAP_MANAGE_SOCI ) 
         $anno   = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
         $amount = (float) str_replace( ',', '.', (string) ( $_POST['importo'] ?? '' ) );
         if ( $amount <= 0 ) { $amount = Quote::default_amount(); }
-        $metodo = sanitize_key( (string) ( $_POST['metodo'] ?? 'bonifico' ) );
-        $ref    = sanitize_text_field( wp_unslash( $_POST['ref'] ?? '' ) ) ?: null;
-        Quote::mark_paid( $uid, $anno, $metodo, $ref, 'Registrato a mano (scheda socio)', $amount );
+        $metodo   = sanitize_key( (string) ( $_POST['metodo'] ?? 'banca' ) );
+        $ref      = sanitize_text_field( wp_unslash( $_POST['ref'] ?? '' ) ) ?: null;
+        $data_pag = sanitize_text_field( wp_unslash( $_POST['data_pagamento'] ?? '' ) ) ?: null;
+        Quote::mark_paid( $uid, $anno, $metodo, $ref, 'Registrato a mano (scheda socio)', $amount, $data_pag );
         wp_safe_redirect( add_query_arg( 'msg', 'paid', wp_get_referer() ) ); exit;
     }
     if ( $action === 'mark_unpaid' ) {
         Quote::mark_unpaid( $uid, (int) ( $_POST['anno'] ?? gmdate( 'Y' ) ) );
         wp_safe_redirect( add_query_arg( 'msg', 'unpaid', wp_get_referer() ) ); exit;
+    }
+    if ( $action === 'save_quota_record' ) {
+        Quote::update_record( $uid, (int) ( $_POST['anno'] ?? 0 ), [
+            'importo'        => (string) ( $_POST['importo'] ?? '' ),
+            'metodo'         => sanitize_key( (string) ( $_POST['metodo'] ?? '' ) ),
+            'stato'          => sanitize_key( (string) ( $_POST['stato'] ?? 'paid' ) ),
+            'data_pagamento' => sanitize_text_field( wp_unslash( $_POST['data_pagamento'] ?? '' ) ),
+        ] );
+        wp_safe_redirect( add_query_arg( 'msg', 'paid', wp_get_referer() ) ); exit;
     }
     if ( $action === 'save_ricevuta' ) {
         $ric_anno = (int) ( $_POST['anno'] ?? gmdate( 'Y' ) );
@@ -89,7 +99,7 @@ $year    = (int) gmdate( 'Y' );
 $status  = Quote::status_for( $uid, $year );
 $storico = Quote::for_user( $uid );
 $numero  = (string) get_user_meta( $uid, 'gf_numero_socio', true );
-$metodi  = [ 'bonifico' => 'Bonifico', 'contanti' => 'Contanti', 'paypal' => 'PayPal', 'altro' => 'Altro' ];
+$metodi  = Quote::metodi();
 $chip = match ( $status ) {
     'paid'     => [ 'IN REGOLA', '#5DA34D', '#E5F2DF' ],
     'expiring' => [ 'IN SCADENZA', '#B26A00', '#FFEFD6' ],
@@ -192,8 +202,9 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
                 <?php wp_nonce_field( 'gfoss_socio_' . $uid ); ?>
                 <input type="hidden" name="_action" value="mark_paid">
                 <label>Anno<br><input type="number" name="anno" value="<?php echo esc_attr( (string) $year ); ?>" style="width:80px"></label>
-                <label>Metodo<br><select name="metodo"><?php foreach ( $metodi as $k => $v ) echo '<option value="' . esc_attr( $k ) . '">' . esc_html( $v ) . '</option>'; ?></select></label>
+                <label>Canale<br><select name="metodo"><?php foreach ( $metodi as $k => $v ) echo '<option value="' . esc_attr( $k ) . '">' . esc_html( $v ) . '</option>'; ?></select></label>
                 <label>Importo<br><input type="text" name="importo" value="<?php echo esc_attr( number_format( Quote::default_amount(), 2, '.', '' ) ); ?>" style="width:70px"></label>
+                <label>Data pagamento<br><input type="date" name="data_pagamento" value="<?php echo esc_attr( gmdate( 'Y-m-d' ) ); ?>"></label>
                 <label>Rif.<br><input type="text" name="ref" style="width:110px"></label>
                 <button type="submit" class="button button-primary">Segna pagata</button>
             </form>
@@ -204,23 +215,25 @@ $card = 'background:#fff;padding:20px;border:1px solid #e2e8ec;border-radius:8px
                 <button type="submit" class="button" onclick="return confirm('Segnare la quota <?php echo esc_attr( (string) $year ); ?> come NON pagata?')">Segna non pagata (<?php echo esc_html( (string) $year ); ?>)</button>
             </form>
 
-            <h3>Storico</h3>
-            <table class="widefat striped">
-                <thead><tr><th>Anno</th><th>Importo</th><th>Metodo</th><th>Stato</th><th>Data</th></tr></thead>
-                <tbody>
-                <?php if ( ! $storico ) : ?>
-                    <tr><td colspan="5">Nessun pagamento registrato.</td></tr>
-                <?php else : foreach ( $storico as $q ) : ?>
-                    <tr>
-                        <td><?php echo esc_html( $q['anno'] ); ?></td>
-                        <td><?php echo esc_html( number_format_i18n( (float) $q['importo'], 2 ) ); ?> €</td>
-                        <td><?php echo esc_html( $metodi[ $q['metodo'] ] ?? $q['metodo'] ); ?></td>
-                        <td><?php echo $q['stato'] === 'paid' ? '✓ pagata' : esc_html( $q['stato'] ); ?></td>
-                        <td><?php echo esc_html( $q['data_pagamento'] ? mysql2date( 'd/m/Y', $q['data_pagamento'] ) : '—' ); ?></td>
-                    </tr>
-                <?php endforeach; endif; ?>
-                </tbody>
-            </table>
+            <h3>Storico e modifica</h3>
+            <?php if ( ! $storico ) : ?>
+                <p class="description">Nessun pagamento registrato.</p>
+            <?php else : foreach ( $storico as $q ) :
+                $opts = $metodi;
+                if ( $q['metodo'] !== '' && ! isset( $opts[ $q['metodo'] ] ) ) { $opts[ $q['metodo'] ] = Quote::metodo_label( $q['metodo'] ); }
+                ?>
+                <form method="post" style="display:flex;gap:.4rem;align-items:end;flex-wrap:wrap;margin:0 0 .5rem;padding-bottom:.5rem;border-bottom:1px solid #eee">
+                    <?php wp_nonce_field( 'gfoss_socio_' . $uid ); ?>
+                    <input type="hidden" name="_action" value="save_quota_record">
+                    <input type="hidden" name="anno" value="<?php echo esc_attr( (string) $q['anno'] ); ?>">
+                    <label style="min-width:48px"><strong><?php echo esc_html( $q['anno'] ); ?></strong></label>
+                    <label>Importo<br><input type="text" name="importo" value="<?php echo esc_attr( number_format( (float) $q['importo'], 2, '.', '' ) ); ?>" style="width:70px"></label>
+                    <label>Canale<br><select name="metodo"><?php foreach ( $opts as $k => $v ) echo '<option value="' . esc_attr( $k ) . '" ' . selected( $q['metodo'], $k, false ) . '>' . esc_html( $v ) . '</option>'; ?></select></label>
+                    <label>Stato<br><select name="stato"><option value="paid" <?php selected( $q['stato'], 'paid' ); ?>>Pagata</option><option value="pending" <?php selected( $q['stato'], 'pending' ); ?>>Non pagata</option></select></label>
+                    <label>Data<br><input type="date" name="data_pagamento" value="<?php echo esc_attr( (string) $q['data_pagamento'] ); ?>"></label>
+                    <button type="submit" class="button">Salva</button>
+                </form>
+            <?php endforeach; endif; ?>
 
             <?php $ric = Quote::get( $uid, $year ) ?: []; $next_ric = Quote::next_ricevuta_numero( $year ); ?>
             <h3 style="margin-top:1.2rem">Ricevuta <?php echo esc_html( (string) $year ); ?></h3>
