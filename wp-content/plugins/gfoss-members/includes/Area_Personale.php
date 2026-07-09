@@ -30,7 +30,7 @@ class Area_Personale {
             'gfoss_eventi', 'gfoss_materiali', 'gfoss_mappa_soci', 'gfoss_convocazioni',
             'gfoss_documenti_riservati', 'gfoss_progetti', 'gfoss_sondaggi',
             'gfoss_registro_volontari', 'gfoss_gestione_eventi', 'gfoss_gestione_soci', 'gfoss_scrivi_news',
-            'gfoss_console_direttivo', 'gfoss_comunicazioni_soci', 'gfoss_votazioni', 'gfoss_elenco_soci',
+            'gfoss_console_direttivo', 'gfoss_comunicazioni_soci', 'gfoss_votazioni', 'gfoss_elenco_soci', 'gfoss_bilanci',
         ];
         foreach ( $shortcodes as $sc ) {
             if ( has_shortcode( $post->post_content, $sc ) ) {

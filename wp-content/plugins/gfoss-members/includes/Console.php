@@ -77,6 +77,10 @@ class Console {
         if ( $conv && current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) {
             $tools[] = [ $conv, '🏛️', 'Convocazioni e deleghe', 'Assemblee e gestione deleghe.' ];
         }
+        $vdir = self::page_url( 'verbali-direttivo' );
+        if ( $vdir && Trasparenza::user_is_board() ) {
+            $tools[] = [ $vdir, '📕', 'Verbali del direttivo', 'Verbali del CD, riservati.' ];
+        }
         $voti = self::page_url( 'votazioni' );
         if ( $voti && current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) {
             $tools[] = [ $voti, '🗳️', 'Votazioni', 'Crea e gestisci le votazioni d\'assemblea.' ];

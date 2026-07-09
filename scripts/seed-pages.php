@@ -575,6 +575,14 @@ gfoss_seed_page( 'scrivi-news', 'Scrivi una news', $area_id, <<<HTML
 HTML
 , 10 );
 
+// 12f-bis. Verbali del direttivo (riservata al CD)
+gfoss_seed_page( 'verbali-direttivo', 'Verbali del direttivo', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_bilanci mostra="direttivo"]
+<!-- /wp:shortcode -->
+HTML
+, 14 );
+
 // 12g. Rubrica soci (bio, riservata ai soci)
 gfoss_seed_page( 'rubrica-soci', 'Rubrica soci', $area_id, <<<HTML
 <!-- wp:shortcode -->

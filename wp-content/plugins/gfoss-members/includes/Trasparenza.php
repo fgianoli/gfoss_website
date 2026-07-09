@@ -35,6 +35,16 @@ class Trasparenza {
         return self::TIPI[ $t ] ?? '—';
     }
 
+    /** L'utente fa parte del Consiglio Direttivo (o è amministratore)? */
+    public static function user_is_board(): bool {
+        return is_user_logged_in() && (
+            current_user_can( Roles::CAP_MANAGE_SOCI )
+            || current_user_can( Roles::CAP_MANAGE_QUOTE )
+            || current_user_can( Roles::CAP_MANAGE_ASSEMBLEE )
+            || current_user_can( Roles::CAP_VIEW_ACCOUNTING )
+        );
+    }
+
     public static function init(): void {
         add_action( 'init',                   [ __CLASS__, 'register_cpt' ] );
         add_action( 'add_meta_boxes',         [ __CLASS__, 'metabox' ] );
@@ -192,7 +202,7 @@ class Trasparenza {
 
     public static function shortcode( $atts = [], $content = null ): string {
         $atts   = shortcode_atts( [ 'mostra' => 'both' ], $atts, 'gfoss_bilanci' );
-        $mostra = in_array( $atts['mostra'], [ 'both', 'bilanci', 'verbali' ], true ) ? $atts['mostra'] : 'both';
+        $mostra = in_array( $atts['mostra'], [ 'both', 'bilanci', 'verbali', 'direttivo' ], true ) ? $atts['mostra'] : 'both';
 
         $docs = get_posts( [
             'post_type'      => self::CPT,
@@ -221,6 +231,18 @@ class Trasparenza {
         usort( $verb_ass, $by_data );
         usort( $verb_dir, $by_data );
 
+        // Verbali del direttivo: vista RISERVATA al Consiglio Direttivo.
+        if ( $mostra === 'direttivo' ) {
+            if ( ! self::user_is_board() ) {
+                return '<div class="gf-card gf-card--warn">Sezione riservata al Consiglio Direttivo.</div>';
+            }
+            ob_start();
+            echo '<div class="gf-trasparenza">';
+            self::render_verbali_list( $verb_dir, 'Verbali del Consiglio Direttivo' );
+            echo '</div>';
+            return (string) ob_get_clean();
+        }
+
         ob_start();
         echo '<div class="gf-trasparenza">';
 
@@ -243,7 +265,7 @@ class Trasparenza {
 
         if ( $mostra !== 'bilanci' ) {
             self::render_verbali_list( $verb_ass, "Verbali dell'assemblea dei soci" );
-            self::render_verbali_list( $verb_dir, 'Verbali del Consiglio Direttivo' );
+            // I verbali del direttivo NON sono pubblici: vedi [gfoss_bilanci mostra="direttivo"].
         }
 
         echo '</div>';
