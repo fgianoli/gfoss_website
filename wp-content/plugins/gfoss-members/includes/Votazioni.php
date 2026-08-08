@@ -123,12 +123,15 @@ class Votazioni {
         $opz = array_values( array_filter( array_map( 'trim', preg_split( '/\r\n|\r|\n/', $opz_raw ) ) ) );
         if ( ! $opz ) { $opz = self::DEFAULT_OPZIONI; }
 
+        $max_scelte = max( 1, (int) ( $_POST['max_scelte'] ?? 1 ) );
+        $max_scelte = min( $max_scelte, count( $opz ) );
         $wpdb->insert( Schema::table_votazioni(), [
             'convocazione_id' => (int) ( $_POST['convocazione_id'] ?? 0 ) ?: null,
             'titolo'          => $titolo,
             'descrizione'     => sanitize_textarea_field( wp_unslash( $_POST['descrizione'] ?? '' ) ),
             'tipo'            => $tipo,
             'opzioni'         => wp_json_encode( array_map( 'sanitize_text_field', $opz ), JSON_UNESCAPED_UNICODE ),
+            'max_scelte'      => $max_scelte,
             'stato'           => 'bozza',
             'created_by'      => get_current_user_id(),
         ] );
@@ -162,13 +165,18 @@ class Votazioni {
 
         $uid = get_current_user_id();
         $vid = (int) ( $_POST['votazione_id'] ?? 0 );
-        $opz = (int) ( $_POST['opzione'] ?? -1 );
         $vz  = self::get( $vid );
         if ( ! $vz ) { self::back( 'err' ); }
-
         if ( self::vote_block_reason( $vz, $uid ) !== '' ) { self::back( 'voto_no' ); }
+
         $opzioni = self::options( $vz );
-        if ( $opz < 0 || $opz >= count( $opzioni ) ) { self::back( 'voto_no' ); }
+        $max     = max( 1, (int) ( $vz['max_scelte'] ?? 1 ) );
+
+        // Voto singolo (radio) o multiplo (checkbox → array).
+        $raw    = $_POST['opzione'] ?? null;
+        $scelte = is_array( $raw ) ? array_map( 'intval', $raw ) : ( ( $raw === null || $raw === '' ) ? [] : [ (int) $raw ] );
+        $scelte = array_values( array_unique( array_filter( $scelte, static fn( $i ) => $i >= 0 && $i < count( $opzioni ) ) ) );
+        if ( ! $scelte || count( $scelte ) > $max ) { self::back( 'voto_no' ); }
 
         // Turnout prima (UNIQUE evita il doppio voto anche in gara).
         $ins = $wpdb->query( $wpdb->prepare(
@@ -176,12 +184,14 @@ class Votazioni {
         if ( ! $ins ) { self::back( 'voto_no' ); } // già votato
 
         $peso = self::weight( (int) $vz['convocazione_id'], $uid );
-        $wpdb->insert( Schema::table_voti_assemblea(), [
-            'votazione_id' => $vid,
-            'opzione'      => $opz,
-            'peso'         => $peso,
-            'user_id'      => $vz['tipo'] === 'segreto' ? null : $uid, // segreto: niente identità
-        ] );
+        foreach ( $scelte as $opz ) {
+            $wpdb->insert( Schema::table_voti_assemblea(), [
+                'votazione_id' => $vid,
+                'opzione'      => (int) $opz,
+                'peso'         => $peso,
+                'user_id'      => $vz['tipo'] === 'segreto' ? null : $uid, // segreto: niente identità
+            ] );
+        }
         do_action( 'gfoss_voto_cast', $vid, $uid, $peso );
         self::back( 'voto_ok' );
     }
@@ -203,6 +213,8 @@ class Votazioni {
         $notes = [ 'voto_ok' => [ 'success', 'Voto registrato. Grazie!' ], 'voto_no' => [ 'warn', 'Non è stato possibile registrare il voto.' ], 'created' => [ 'success', 'Votazione creata (in bozza).' ], 'state' => [ 'success', 'Stato aggiornato.' ], 'err' => [ 'warn', 'Dati non validi.' ] ];
         if ( isset( $notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--' . esc_attr( $notes[ $msg ][0] ) . '">' . esc_html( $notes[ $msg ][1] ) . '</div>'; }
 
+        echo '<script>function gfVoteLimit(cb){var m=parseInt(cb.getAttribute("data-vmax")||"1",10);var b=cb.form.querySelectorAll(\'input[name="opzione[]"]\');var c=0;b.forEach(function(x){if(x.checked)c++;});if(c>m){cb.checked=false;window.alert("Puoi scegliere al massimo "+m+" candidati.");}}</script>';
+
         $all = self::all();
 
         // Cabina di voto: votazioni aperte
@@ -218,10 +230,18 @@ class Votazioni {
                 echo '<p class="gf-muted">▸ ' . esc_html( $block ) . '</p>';
             } else {
                 $peso = self::weight( (int) $vz['convocazione_id'], $uid );
+                $max  = max( 1, (int) ( $vz['max_scelte'] ?? 1 ) );
                 echo '<form method="post" action="' . $action . '">' . wp_nonce_field( 'gfoss_voto_cast', '_wpnonce', true, false );
                 echo '<input type="hidden" name="action" value="gfoss_voto_cast"><input type="hidden" name="votazione_id" value="' . (int) $vz['id'] . '">';
-                foreach ( $opzioni as $i => $opt ) {
-                    echo '<label class="gf-voto__opt"><input type="radio" name="opzione" value="' . (int) $i . '" required> ' . esc_html( $opt ) . '</label>';
+                if ( $max > 1 ) {
+                    echo '<p class="gf-muted">Puoi scegliere fino a <strong>' . (int) $max . '</strong> candidati.</p>';
+                    foreach ( $opzioni as $i => $opt ) {
+                        echo '<label class="gf-voto__opt"><input type="checkbox" name="opzione[]" value="' . (int) $i . '" data-vmax="' . (int) $max . '" onclick="gfVoteLimit(this)"> ' . esc_html( $opt ) . '</label>';
+                    }
+                } else {
+                    foreach ( $opzioni as $i => $opt ) {
+                        echo '<label class="gf-voto__opt"><input type="radio" name="opzione" value="' . (int) $i . '" required> ' . esc_html( $opt ) . '</label>';
+                    }
                 }
                 echo '<p class="gf-muted">Il tuo voto vale <strong>' . (int) $peso . '</strong>' . ( $peso > 1 ? ' (incluse le deleghe ricevute)' : '' ) . '. ' . ( $vz['tipo'] === 'segreto' ? 'Voto segreto: non sarà collegato al tuo nome.' : '' ) . '</p>';
                 echo '<p><button class="gf-btn gf-btn--primary" onclick="return confirm(\'Confermi il voto? Non sarà modificabile.\')">Vota</button></p></form>';
@@ -252,14 +272,27 @@ class Votazioni {
     private static function render_results( array $vz ): string {
         $opzioni = self::options( $vz );
         $res     = self::results( (int) $vz['id'] );
-        $tot     = max( 1, $res['tot_peso'] );
-        $h = '<article class="gf-voto"><h3>' . esc_html( $vz['titolo'] ) . ' <small class="gf-muted">(' . esc_html( $vz['tipo'] ) . ')</small></h3>';
-        $h .= '<p class="gf-muted">Votanti: ' . (int) $res['turnout'] . ' · voti totali (pesati): ' . (int) $res['tot_peso'] . '</p>';
-        foreach ( $opzioni as $i => $opt ) {
-            $peso = $res['by'][ $i ]['peso'] ?? 0;
-            $pct  = round( $peso / $tot * 100 );
-            $h .= '<div class="gf-voto__bar"><span>' . esc_html( $opt ) . ' — <strong>' . (int) $peso . '</strong> (' . $pct . '%)</span>'
+        $max     = max( 1, (int) ( $vz['max_scelte'] ?? 1 ) );
+
+        // Classifica per peso (decrescente).
+        $rank = [];
+        foreach ( $opzioni as $i => $opt ) { $rank[ $i ] = $res['by'][ $i ]['peso'] ?? 0; }
+        arsort( $rank );
+        $ref    = max( 1, ( $rank ? max( $rank ) : 1 ) );
+        $eletti = $max > 1 ? array_slice( array_keys( $rank ), 0, $max, true ) : [];
+
+        $h  = '<article class="gf-voto"><h3>' . esc_html( $vz['titolo'] ) . ' <small class="gf-muted">(' . esc_html( $vz['tipo'] ) . ( $max > 1 ? ', ' . (int) $max . ' seggi' : '' ) . ')</small></h3>';
+        $h .= '<p class="gf-muted">Votanti: ' . (int) $res['turnout'] . ' · preferenze totali (pesate): ' . (int) $res['tot_peso'] . '</p>';
+        $pos = 0;
+        foreach ( $rank as $i => $peso ) {
+            $pos++;
+            $pct   = round( $peso / $ref * 100 );
+            $badge = ( $max > 1 && in_array( $i, $eletti, true ) && $peso > 0 ) ? ' <strong style="color:#5DA34D">✓ eletto</strong>' : '';
+            $h .= '<div class="gf-voto__bar"><span>' . ( $max > 1 ? (int) $pos . '. ' : '' ) . esc_html( $opzioni[ $i ] ) . ' — <strong>' . (int) $peso . '</strong>' . $badge . '</span>'
                 . '<div class="gf-voto__track"><div class="gf-voto__fill" style="width:' . (int) $pct . '%"></div></div></div>';
+        }
+        if ( $max > 1 ) {
+            $h .= '<p class="gf-muted" style="font-size:.85em">In caso di parità sull\'ultimo seggio è necessario un ballottaggio.</p>';
         }
         return $h . '</article>';
     }
@@ -277,6 +310,7 @@ class Votazioni {
         echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Quesito / titolo *</span><input type="text" name="titolo" required></label>';
         echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Descrizione</span><textarea name="descrizione" rows="2"></textarea></label>';
         echo '<label class="gf-field"><span class="gf-field__lbl">Tipo</span><select name="tipo"><option value="palese">Palese (delibera)</option><option value="segreto">Segreto (elezione)</option></select></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Preferenze esprimibili</span><input type="number" name="max_scelte" min="1" value="1"><small class="gf-muted">1 = scelta singola (delibera o carica unica). Per il Consiglio Direttivo: numero di seggi/candidati che ogni socio può votare.</small></label>';
         echo '<label class="gf-field"><span class="gf-field__lbl">Convocazione</span><select name="convocazione_id"><option value="">— nessuna —</option>';
         foreach ( $convs as $c ) { echo '<option value="' . (int) $c->ID . '">' . esc_html( $c->post_title ) . '</option>'; }
         echo '</select></label>';

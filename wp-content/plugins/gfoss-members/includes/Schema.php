@@ -185,6 +185,7 @@ class Schema {
             descrizione TEXT NULL,
             tipo VARCHAR(16) NOT NULL DEFAULT 'palese',
             opzioni TEXT NULL,
+            max_scelte SMALLINT UNSIGNED NOT NULL DEFAULT 1,
             stato VARCHAR(16) NOT NULL DEFAULT 'bozza',
             apertura DATETIME NULL DEFAULT NULL,
             chiusura DATETIME NULL DEFAULT NULL,
