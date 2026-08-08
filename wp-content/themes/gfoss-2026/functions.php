@@ -6,7 +6,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_THEME_VERSION', '1.2.1' );
+define( 'GFOSS_THEME_VERSION', '1.3.0' );
 define( 'GFOSS_THEME_DIR', get_template_directory() );
 define( 'GFOSS_THEME_URI', get_template_directory_uri() );
 
@@ -34,6 +34,44 @@ add_action( 'after_setup_theme', function () {
 
     load_theme_textdomain( 'gfoss-2026', GFOSS_THEME_DIR . '/languages' );
 } );
+
+/* ---- Branding della pagina di login (logo + colori del sito) ---- */
+add_action( 'login_enqueue_scripts', function () {
+    $logo = '';
+    $cid  = get_theme_mod( 'custom_logo' );
+    if ( $cid ) {
+        $src = wp_get_attachment_image_src( $cid, 'full' );
+        if ( $src ) { $logo = $src[0]; }
+    }
+    if ( ! $logo && is_file( GFOSS_THEME_DIR . '/assets/img/logo.png' ) ) {
+        $logo = GFOSS_THEME_URI . '/assets/img/logo.png';
+    }
+    ?>
+    <style>
+      body.login { background: #EEF3F6; }
+      #login { padding-top: 5%; width: 340px; }
+      .login h1 a {
+        <?php if ( $logo ) : ?>background-image: url('<?php echo esc_url( $logo ); ?>');<?php endif; ?>
+        background-size: contain; background-position: center bottom;
+        width: 260px; height: 96px; margin: 0 auto 10px;
+      }
+      #loginform, #registerform, #lostpasswordform {
+        border: 1px solid #E2E8EC; border-top: 4px solid #1A6FA0;
+        border-radius: 10px; box-shadow: 0 8px 28px rgba(15,35,48,.10);
+      }
+      .login label { color: #0F2330; }
+      .login input[type=text], .login input[type=password], .login input[type=email] { border-radius: 6px; }
+      .login input:focus { border-color: #1A6FA0; box-shadow: 0 0 0 1px #1A6FA0; }
+      .wp-core-ui .button-primary { background: #1A6FA0; border-color: #155a83; text-shadow: none; box-shadow: none; }
+      .wp-core-ui .button-primary:hover { background: #155a83; border-color: #124e70; }
+      .login #nav a, .login #backtoblog a { color: #4A5C6A; }
+      .login #nav a:hover, .login #backtoblog a:hover { color: #1A6FA0; }
+      .login .message, .login .notice { border-left-color: #5DA34D; }
+    </style>
+    <?php
+} );
+add_filter( 'login_headerurl',  static function () { return home_url( '/' ); } );
+add_filter( 'login_headertext', static function () { return get_bloginfo( 'name' ); } );
 
 add_action( 'wp_enqueue_scripts', function () {
     wp_enqueue_style( 'gfoss-fonts',

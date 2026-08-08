@@ -19,6 +19,7 @@ class Soci_Frontend {
 
     public static function init(): void {
         add_shortcode( 'gfoss_gestione_soci', [ __CLASS__, 'render' ] );
+        add_action( 'admin_post_gfoss_soci_add',        [ __CLASS__, 'handle_add' ] );
         add_action( 'admin_post_gfoss_soci_quota',      [ __CLASS__, 'handle_quota' ] );
         add_action( 'admin_post_gfoss_soci_quota_edit', [ __CLASS__, 'handle_quota_edit' ] );
         add_action( 'admin_post_gfoss_soci_ricevuta',   [ __CLASS__, 'handle_ricevuta' ] );
@@ -48,6 +49,34 @@ class Soci_Frontend {
     }
 
     // --- Handlers ----------------------------------------------------------
+
+    public static function handle_add(): void {
+        if ( ! self::can_soci() ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_soci' );
+        $email   = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+        $nome    = sanitize_text_field( wp_unslash( $_POST['nome'] ?? '' ) );
+        $cognome = sanitize_text_field( wp_unslash( $_POST['cognome'] ?? '' ) );
+        if ( ! is_email( $email ) ) { self::back( 0, 'add_err' ); }
+        if ( email_exists( $email ) ) { self::back( 0, 'add_exists' ); }
+        $uid = wp_insert_user( [
+            'user_login'   => $email,
+            'user_email'   => $email,
+            'user_pass'    => wp_generate_password( 24, true ),
+            'first_name'   => $nome,
+            'last_name'    => $cognome,
+            'display_name' => trim( "$nome $cognome" ) ?: $email,
+            'role'         => 'gfoss_socio',
+        ] );
+        if ( is_wp_error( $uid ) ) { self::back( 0, 'add_err' ); }
+        $uid = (int) $uid;
+        update_user_meta( $uid, 'gf_data_ammissione', current_time( 'Y-m-d' ) );
+        update_user_meta( $uid, 'gf_numero_socio', Candidatura::next_numero_socio() );
+        $cf = sanitize_text_field( wp_unslash( $_POST['gf_codice_fiscale'] ?? '' ) );
+        if ( $cf !== '' ) { update_user_meta( $uid, 'gf_codice_fiscale', $cf ); }
+        // Email all'utente con il link per impostare/cambiare la password.
+        wp_new_user_notification( $uid, null, 'user' );
+        self::back( $uid, 'added' );
+    }
 
     public static function handle_quota(): void {
         if ( ! self::can_quota() ) { wp_die( 'Permesso negato.' ); }
@@ -186,8 +215,21 @@ class Soci_Frontend {
         ob_start();
         echo '<div class="gf-area gf-vol">';
         echo '<header class="gf-area__head"><div><p class="gf-area__eyebrow">Consiglio Direttivo</p><h1 class="gf-area__title">Soci e quote ' . $year . '</h1><p class="gf-area__sub">Panoramica dei soci. Apri la scheda per anagrafica, ruoli e archiviazione.</p></div></header>';
-        $notes = [ 'quota' => 'Quota aggiornata.', 'deleted' => 'Socio eliminato.', 'saved' => 'Dati salvati.', 'roles' => 'Ruoli aggiornati.', 'archived' => 'Stato aggiornato.' ];
-        if ( isset( $notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--success">' . esc_html( $notes[ $msg ] ) . '</div>'; }
+        $ok_notes   = [ 'quota' => 'Quota aggiornata.', 'deleted' => 'Socio eliminato.', 'saved' => 'Dati salvati.', 'roles' => 'Ruoli aggiornati.', 'archived' => 'Stato aggiornato.', 'added' => 'Socio creato: email per impostare la password inviata.' ];
+        $warn_notes = [ 'add_exists' => 'Esiste già un utente con questa email.', 'add_err' => 'Email non valida o errore nella creazione del socio.' ];
+        if ( isset( $ok_notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--success">' . esc_html( $ok_notes[ $msg ] ) . '</div>'; }
+        elseif ( isset( $warn_notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--warn">' . esc_html( $warn_notes[ $msg ] ) . '</div>'; }
+
+        if ( self::can_soci() ) {
+            echo '<section class="gf-card"><h2 style="margin-top:0">Aggiungi socio</h2>';
+            echo '<p class="gf-muted">Crea manualmente un socio: riceverà un\'email con il link per impostare la propria password.</p>';
+            echo '<form method="post" action="' . $action . '" class="gf-form">' . $nonce . '<input type="hidden" name="action" value="gfoss_soci_add"><div class="gf-grid">';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Nome</span><input type="text" name="nome"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Cognome</span><input type="text" name="cognome"></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Email *</span><input type="email" name="email" required></label>';
+            echo '<label class="gf-field"><span class="gf-field__lbl">Codice fiscale</span><input type="text" name="gf_codice_fiscale"></label>';
+            echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">Crea socio e invia email</button></p></form></section>';
+        }
 
         echo '<section class="gf-card">';
         echo '<form method="get" style="margin-bottom:.8rem"><input type="text" class="gf-select" name="q" value="' . esc_attr( $q ) . '" placeholder="Cerca per nome o email…"> <button class="gf-btn gf-btn--ghost gf-btn--sm">Cerca</button></form>';
