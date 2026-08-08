@@ -210,6 +210,16 @@ class Votazioni {
         echo '<div class="gf-area gf-vol">';
         echo '<header class="gf-area__head"><div><p class="gf-area__eyebrow">Assemblea</p><h1 class="gf-area__title">Votazioni</h1><p class="gf-area__sub">Esprimi il tuo voto sulle votazioni aperte. Il peso tiene conto delle deleghe.</p></div></header>';
 
+        // Condivisione della pagina con i soci tramite QR (per assemblee in presenza/online).
+        $page_url = get_permalink() ?: home_url( '/area-soci/votazioni/' );
+        $qr = class_exists( __NAMESPACE__ . '\\Qr' ) ? Qr::data_uri( $page_url, 200 ) : '';
+        echo '<details class="gf-card" style="margin-bottom:1rem"><summary style="cursor:pointer;font-weight:600">📱 Condividi la pagina di voto (QR)</summary><div style="text-align:center;margin-top:.8rem">';
+        if ( $qr ) { echo '<img src="' . esc_attr( $qr ) . '" alt="QR pagina votazioni" style="width:200px;height:200px">'; }
+        echo '<p class="gf-muted" style="word-break:break-all;margin:.4rem 0">' . esc_html( $page_url ) . '</p>';
+        echo '<p><a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( $page_url ) . '">Apri il link</a></p>';
+        echo '<p class="gf-muted" style="font-size:.85em">Inquadra il QR per aprire la pagina di voto (serve comunque il login socio).</p>';
+        echo '</div></details>';
+
         $notes = [ 'voto_ok' => [ 'success', 'Voto registrato. Grazie!' ], 'voto_no' => [ 'warn', 'Non è stato possibile registrare il voto.' ], 'created' => [ 'success', 'Votazione creata (in bozza).' ], 'state' => [ 'success', 'Stato aggiornato.' ], 'err' => [ 'warn', 'Dati non validi.' ] ];
         if ( isset( $notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--' . esc_attr( $notes[ $msg ][0] ) . '">' . esc_html( $notes[ $msg ][1] ) . '</div>'; }
 
