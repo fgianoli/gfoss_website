@@ -186,9 +186,14 @@ class Schema {
             tipo VARCHAR(16) NOT NULL DEFAULT 'palese',
             opzioni TEXT NULL,
             max_scelte SMALLINT UNSIGNED NOT NULL DEFAULT 1,
+            quorum SMALLINT UNSIGNED NOT NULL DEFAULT 0,
             stato VARCHAR(16) NOT NULL DEFAULT 'bozza',
             apertura DATETIME NULL DEFAULT NULL,
             chiusura DATETIME NULL DEFAULT NULL,
+            apertura_prog DATETIME NULL DEFAULT NULL,
+            chiusura_prog DATETIME NULL DEFAULT NULL,
+            elettorato LONGTEXT NULL,
+            hash_urna VARCHAR(64) NULL DEFAULT NULL,
             created_by BIGINT UNSIGNED NULL DEFAULT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
@@ -202,10 +207,13 @@ class Schema {
             votazione_id BIGINT UNSIGNED NOT NULL,
             opzione SMALLINT UNSIGNED NOT NULL,
             peso INT UNSIGNED NOT NULL DEFAULT 1,
+            bianca TINYINT(1) NOT NULL DEFAULT 0,
+            codice VARCHAR(16) NULL DEFAULT NULL,
             user_id BIGINT UNSIGNED NULL DEFAULT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
-            KEY votazione_id (votazione_id)
+            KEY votazione_id (votazione_id),
+            KEY codice (codice)
         ) $charset;";
 
         $t_vn = self::table_votanti();
