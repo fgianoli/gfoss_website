@@ -22,6 +22,7 @@ class Votazioni {
     public static function init(): void {
         add_shortcode( 'gfoss_votazioni', [ __CLASS__, 'render' ] );
         add_action( 'admin_post_gfoss_voto_create', [ __CLASS__, 'handle_create' ] );
+        add_action( 'admin_post_gfoss_voto_edit',   [ __CLASS__, 'handle_edit' ] );
         add_action( 'admin_post_gfoss_voto_state',  [ __CLASS__, 'handle_state' ] );
         add_action( 'admin_post_gfoss_voto_cast',   [ __CLASS__, 'handle_cast' ] );
     }
@@ -151,10 +152,37 @@ class Votazioni {
         } elseif ( $op === 'chiudi' ) {
             $wpdb->update( $t, [ 'stato' => 'chiusa', 'chiusura' => current_time( 'mysql' ) ], [ 'id' => $id ] );
         } elseif ( $op === 'elimina' ) {
-            // Solo bozze senza voti: niente cancellazioni di votazioni svolte.
-            $vz = self::get( $id );
-            if ( $vz && $vz['stato'] === 'bozza' ) { $wpdb->delete( $t, [ 'id' => $id ] ); }
+            // Elimina la votazione e (a cascata) i relativi voti e l'affluenza.
+            $wpdb->delete( Schema::table_voti_assemblea(), [ 'votazione_id' => $id ] );
+            $wpdb->delete( Schema::table_votanti(), [ 'votazione_id' => $id ] );
+            $wpdb->delete( $t, [ 'id' => $id ] );
         }
+        self::back( 'state' );
+    }
+
+    public static function handle_edit(): void {
+        if ( ! self::can_manage() ) { wp_die( 'Permesso negato.' ); }
+        check_admin_referer( 'gfoss_voto' );
+        global $wpdb;
+        $id = (int) ( $_POST['id'] ?? 0 );
+        $vz = self::get( $id );
+        if ( ! $vz || $vz['stato'] !== 'bozza' ) { self::back( 'edit_no' ); } // si modifica solo in bozza
+
+        $titolo = sanitize_text_field( wp_unslash( $_POST['titolo'] ?? '' ) );
+        if ( $titolo === '' ) { self::back( 'err' ); }
+        $tipo = in_array( $_POST['tipo'] ?? '', [ 'palese', 'segreto' ], true ) ? $_POST['tipo'] : 'palese';
+        $opz  = array_values( array_filter( array_map( 'trim', preg_split( '/\r\n|\r|\n/', (string) wp_unslash( $_POST['opzioni'] ?? '' ) ) ) ) );
+        if ( ! $opz ) { $opz = self::DEFAULT_OPZIONI; }
+        $max = min( max( 1, (int) ( $_POST['max_scelte'] ?? 1 ) ), count( $opz ) );
+
+        $wpdb->update( Schema::table_votazioni(), [
+            'convocazione_id' => (int) ( $_POST['convocazione_id'] ?? 0 ) ?: null,
+            'titolo'          => $titolo,
+            'descrizione'     => sanitize_textarea_field( wp_unslash( $_POST['descrizione'] ?? '' ) ),
+            'tipo'            => $tipo,
+            'opzioni'         => wp_json_encode( array_map( 'sanitize_text_field', $opz ), JSON_UNESCAPED_UNICODE ),
+            'max_scelte'      => $max,
+        ], [ 'id' => $id ] );
         self::back( 'state' );
     }
 
@@ -220,7 +248,7 @@ class Votazioni {
         echo '<p class="gf-muted" style="font-size:.85em">Inquadra il QR per aprire la pagina di voto (serve comunque il login socio).</p>';
         echo '</div></details>';
 
-        $notes = [ 'voto_ok' => [ 'success', 'Voto registrato. Grazie!' ], 'voto_no' => [ 'warn', 'Non è stato possibile registrare il voto.' ], 'created' => [ 'success', 'Votazione creata (in bozza).' ], 'state' => [ 'success', 'Stato aggiornato.' ], 'err' => [ 'warn', 'Dati non validi.' ] ];
+        $notes = [ 'voto_ok' => [ 'success', 'Voto registrato. Grazie!' ], 'voto_no' => [ 'warn', 'Non è stato possibile registrare il voto.' ], 'created' => [ 'success', 'Votazione creata (in bozza).' ], 'state' => [ 'success', 'Operazione eseguita.' ], 'err' => [ 'warn', 'Dati non validi.' ], 'edit_no' => [ 'warn', 'Si può modificare solo una votazione in bozza.' ] ];
         if ( isset( $notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--' . esc_attr( $notes[ $msg ][0] ) . '">' . esc_html( $notes[ $msg ][1] ) . '</div>'; }
 
         echo '<script>function gfVoteLimit(cb){var m=parseInt(cb.getAttribute("data-vmax")||"1",10);var b=cb.form.querySelectorAll(\'input[name="opzione[]"]\');var c=0;b.forEach(function(x){if(x.checked)c++;});if(c>m){cb.checked=false;window.alert("Puoi scegliere al massimo "+m+" candidati.");}}</script>';
@@ -335,33 +363,47 @@ class Votazioni {
         $convs = class_exists( __NAMESPACE__ . '\\Convocazioni' )
             ? get_posts( [ 'post_type' => Convocazioni::CPT, 'numberposts' => 100, 'post_status' => 'publish' ] ) : [];
 
-        ob_start();
-        echo '<section class="gf-card"><h2 style="margin-top:0">Gestione votazioni (direttivo)</h2>';
+        $edit = (int) ( $_GET['voto_edit'] ?? 0 );
+        $ev   = $edit ? self::get( $edit ) : null;
+        if ( $ev && $ev['stato'] !== 'bozza' ) { $ev = null; } // modificabile solo in bozza
+        $ev_opz = $ev ? implode( "\n", self::options( $ev ) ) : '';
 
-        // Form crea
+        ob_start();
+        echo '<section class="gf-card" id="voto-admin"><h2 style="margin-top:0">Gestione votazioni (direttivo)</h2>';
+
+        // Form crea / modifica
         echo '<form method="post" action="' . $action . '" class="gf-form" style="margin-bottom:1.2rem">' . wp_nonce_field( 'gfoss_voto', '_wpnonce', true, false );
-        echo '<input type="hidden" name="action" value="gfoss_voto_create"><div class="gf-grid">';
-        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Quesito / titolo *</span><input type="text" name="titolo" required></label>';
-        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Descrizione</span><textarea name="descrizione" rows="2"></textarea></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Tipo</span><select name="tipo"><option value="palese">Palese (delibera)</option><option value="segreto">Segreto (elezione)</option></select></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Preferenze esprimibili</span><input type="number" name="max_scelte" min="1" value="1"><small class="gf-muted">1 = scelta singola (delibera o carica unica). Per il Consiglio Direttivo: numero di seggi/candidati che ogni socio può votare.</small></label>';
+        echo '<input type="hidden" name="action" value="' . ( $ev ? 'gfoss_voto_edit' : 'gfoss_voto_create' ) . '">';
+        if ( $ev ) { echo '<input type="hidden" name="id" value="' . (int) $ev['id'] . '">'; }
+        echo '<h3 style="margin:.2rem 0 .7rem">' . ( $ev ? 'Modifica votazione (bozza)' : 'Nuova votazione' ) . '</h3><div class="gf-grid">';
+        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Quesito / titolo *</span><input type="text" name="titolo" value="' . ( $ev ? esc_attr( $ev['titolo'] ) : '' ) . '" required></label>';
+        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Descrizione</span><textarea name="descrizione" rows="2">' . ( $ev ? esc_textarea( (string) $ev['descrizione'] ) : '' ) . '</textarea></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Tipo</span><select name="tipo"><option value="palese" ' . selected( $ev['tipo'] ?? '', 'palese', false ) . '>Palese (delibera)</option><option value="segreto" ' . selected( $ev['tipo'] ?? '', 'segreto', false ) . '>Segreto (elezione)</option></select></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Preferenze esprimibili</span><input type="number" name="max_scelte" min="1" value="' . ( $ev ? (int) $ev['max_scelte'] : 1 ) . '"><small class="gf-muted">1 = scelta singola (delibera o carica unica). Per il Consiglio: numero di seggi/candidati votabili.</small></label>';
         echo '<label class="gf-field"><span class="gf-field__lbl">Convocazione</span><select name="convocazione_id"><option value="">— nessuna —</option>';
-        foreach ( $convs as $c ) { echo '<option value="' . (int) $c->ID . '">' . esc_html( $c->post_title ) . '</option>'; }
+        foreach ( $convs as $c ) { echo '<option value="' . (int) $c->ID . '" ' . selected( (int) ( $ev['convocazione_id'] ?? 0 ), (int) $c->ID, false ) . '>' . esc_html( $c->post_title ) . '</option>'; }
         echo '</select></label>';
-        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Opzioni (una per riga)</span><textarea name="opzioni" rows="3" placeholder="Favorevole&#10;Contrario&#10;Astenuto"></textarea><small class="gf-muted">Vuoto = Favorevole/Contrario/Astenuto. Per le elezioni inserisci i nomi dei candidati.</small></label>';
-        echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">Crea votazione</button></p></form>';
+        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Opzioni / candidati (una per riga)</span><textarea name="opzioni" rows="4" placeholder="Favorevole&#10;Contrario&#10;Astenuto">' . esc_textarea( $ev_opz ) . '</textarea><small class="gf-muted">Vuoto = Favorevole/Contrario/Astenuto. Per le elezioni inserisci i nomi dei candidati (uno per riga).</small></label>';
+        echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">' . ( $ev ? 'Salva modifiche' : 'Crea votazione' ) . '</button>';
+        if ( $ev ) { echo ' <a class="gf-btn gf-btn--ghost" href="' . esc_url( remove_query_arg( 'voto_edit' ) ) . '">Annulla</a>'; }
+        echo '</p></form>';
 
         // Elenco con azioni
         echo '<div class="gf-tablewrap"><table class="gf-table"><thead><tr><th>Quesito</th><th>Tipo</th><th>Stato</th><th></th></tr></thead><tbody>';
         if ( ! $all ) { echo '<tr><td colspan="4" class="gf-muted">Nessuna votazione.</td></tr>'; }
         foreach ( $all as $vz ) {
             echo '<tr><td><strong>' . esc_html( $vz['titolo'] ) . '</strong></td><td>' . esc_html( $vz['tipo'] ) . ( (int) ( $vz['max_scelte'] ?? 1 ) > 1 ? ' · ' . (int) $vz['max_scelte'] . ' seggi' : '' ) . '</td><td>' . esc_html( $vz['stato'] ) . '</td><td style="white-space:nowrap">';
-            $btn = static function ( $op, $lbl ) use ( $vz, $action ) {
-                return '<form method="post" action="' . $action . '" style="display:inline">' . wp_nonce_field( 'gfoss_voto', '_wpnonce', true, false )
+            $state_btn = static function ( $op, $lbl, $confirm = '' ) use ( $vz, $action ) {
+                $onsubmit = $confirm ? ' onsubmit="return confirm(\'' . esc_js( $confirm ) . '\')"' : '';
+                return '<form method="post" action="' . $action . '" style="display:inline"' . $onsubmit . '>' . wp_nonce_field( 'gfoss_voto', '_wpnonce', true, false )
                     . '<input type="hidden" name="action" value="gfoss_voto_state"><input type="hidden" name="id" value="' . (int) $vz['id'] . '"><input type="hidden" name="op" value="' . esc_attr( $op ) . '"><button class="gf-btn gf-btn--ghost gf-btn--sm">' . esc_html( $lbl ) . '</button></form> ';
             };
-            if ( $vz['stato'] === 'bozza' )  { echo $btn( 'apri', 'Apri' ) . $btn( 'elimina', 'Elimina' ); }
-            if ( $vz['stato'] === 'aperta' ) { echo $btn( 'chiudi', 'Chiudi' ); }
+            if ( $vz['stato'] === 'bozza' ) {
+                echo '<a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( add_query_arg( 'voto_edit', (int) $vz['id'] ) ) . '#voto-admin">Modifica</a> ';
+                echo $state_btn( 'apri', 'Apri' );
+            }
+            if ( $vz['stato'] === 'aperta' ) { echo $state_btn( 'chiudi', 'Chiudi', 'Chiudere la votazione? Non si potrà più votare.' ); }
+            echo $state_btn( 'elimina', 'Elimina', 'Eliminare definitivamente questa votazione e tutti i suoi voti? L\'operazione non è reversibile.' );
             echo '</td></tr>';
         }
         echo '</tbody></table></div></section>';
