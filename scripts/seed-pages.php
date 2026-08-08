@@ -712,6 +712,15 @@ if ( get_locale() !== 'it_IT' ) {
     WP_CLI::log( '  ✓ lingua backend impostata su Italiano (it_IT)' );
 }
 
+// Fuso orario Europa/Roma: è QUESTO che governa current_time() (orari di apertura/
+// chiusura votazioni, promemoria, date ricevute). 'Europe/Rome' gestisce anche l'ora
+// legale (CET/CEST) in automatico. Idempotente.
+if ( get_option( 'timezone_string' ) !== 'Europe/Rome' ) {
+    update_option( 'timezone_string', 'Europe/Rome' );
+    update_option( 'gmt_offset', '' );
+    WP_CLI::log( '  ✓ fuso orario impostato su Europe/Rome' );
+}
+
 // Logo e favicon dagli asset del tema (uploads è gitignorato: così si applicano
 // automaticamente a ogni deploy fresco). Idempotente: importa solo se non impostati.
 $theme_img = get_template_directory() . '/assets/img/';

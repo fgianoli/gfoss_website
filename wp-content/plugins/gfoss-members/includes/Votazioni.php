@@ -534,8 +534,8 @@ class Votazioni {
         echo '<label class="gf-field"><span class="gf-field__lbl">Convocazione</span><select name="convocazione_id"><option value="">— nessuna —</option>';
         foreach ( $convs as $c ) { echo '<option value="' . (int) $c->ID . '" ' . selected( (int) ( $ev['convocazione_id'] ?? 0 ), (int) $c->ID, false ) . '>' . esc_html( $c->post_title ) . '</option>'; }
         echo '</select></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Apertura programmata</span><input type="datetime-local" name="apertura_prog" value="' . ( $ev ? $dtv( $ev['apertura_prog'] ) : '' ) . '"></label>';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Chiusura programmata</span><input type="datetime-local" name="chiusura_prog" value="' . ( $ev ? $dtv( $ev['chiusura_prog'] ) : '' ) . '"></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Apertura programmata</span><input type="datetime-local" name="apertura_prog" value="' . ( $ev ? $dtv( $ev['apertura_prog'] ) : '' ) . '"><small class="gf-muted">Ora italiana (' . esc_html( wp_timezone_string() ) . '). Vuoto = apertura manuale.</small></label>';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Chiusura programmata</span><input type="datetime-local" name="chiusura_prog" value="' . ( $ev ? $dtv( $ev['chiusura_prog'] ) : '' ) . '"><small class="gf-muted">Vuoto = chiusura manuale.</small></label>';
         echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Opzioni / candidati (una per riga)</span><textarea name="opzioni" rows="4" placeholder="Favorevole&#10;Contrario&#10;Astenuto">' . esc_textarea( $ev_opz ) . '</textarea><small class="gf-muted">Vuoto = Favorevole/Contrario/Astenuto. Per le elezioni: i nomi dei candidati, uno per riga.</small></label>';
         echo '</div><p class="gf-actions"><button class="gf-btn gf-btn--primary">' . ( $ev ? 'Salva modifiche' : 'Crea votazione' ) . '</button>';
         if ( $ev ) { echo ' <a class="gf-btn gf-btn--ghost" href="' . esc_url( remove_query_arg( 'voto_edit' ) ) . '">Annulla</a>'; }
