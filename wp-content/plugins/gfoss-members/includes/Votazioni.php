@@ -234,27 +234,41 @@ class Votazioni {
         foreach ( $aperte as $vz ) {
             $opzioni = self::options( $vz );
             $block   = self::vote_block_reason( $vz, $uid );
-            echo '<article class="gf-voto"><h3>' . esc_html( $vz['titolo'] ) . ' <small class="gf-muted">(' . esc_html( $vz['tipo'] ) . ')</small></h3>';
+            $max     = max( 1, (int) ( $vz['max_scelte'] ?? 1 ) );
+            $is_seg  = $vz['tipo'] === 'segreto';
+            $is_elez = $is_seg || $max > 1;
+            $cword   = $is_elez ? 'candidati' : 'opzioni';
+
+            echo '<article class="gf-voto" id="voto-' . (int) $vz['id'] . '">';
+            echo '<div class="gf-voto__head"><h3>' . esc_html( $vz['titolo'] ) . '</h3>' . self::badges( $vz, $max ) . '</div>';
             if ( $vz['descrizione'] ) { echo '<p class="gf-muted">' . nl2br( esc_html( $vz['descrizione'] ) ) . '</p>'; }
+
             if ( $block ) {
-                echo '<p class="gf-muted">▸ ' . esc_html( $block ) . '</p>';
+                echo '<p class="gf-voto__block">▸ ' . esc_html( $block ) . '</p>';
             } else {
                 $peso = self::weight( (int) $vz['convocazione_id'], $uid );
-                $max  = max( 1, (int) ( $vz['max_scelte'] ?? 1 ) );
+                echo '<p class="gf-voto__instr">' . ( $max > 1
+                    ? '👉 Seleziona <strong>fino a ' . (int) $max . '</strong> ' . $cword
+                    : '👉 Seleziona <strong>una</strong> tra le ' . $cword ) . ', poi premi <em>Vota</em>.</p>';
                 echo '<form method="post" action="' . $action . '">' . wp_nonce_field( 'gfoss_voto_cast', '_wpnonce', true, false );
                 echo '<input type="hidden" name="action" value="gfoss_voto_cast"><input type="hidden" name="votazione_id" value="' . (int) $vz['id'] . '">';
-                if ( $max > 1 ) {
-                    echo '<p class="gf-muted">Puoi scegliere fino a <strong>' . (int) $max . '</strong> candidati.</p>';
-                    foreach ( $opzioni as $i => $opt ) {
-                        echo '<label class="gf-voto__opt"><input type="checkbox" name="opzione[]" value="' . (int) $i . '" data-vmax="' . (int) $max . '" onclick="gfVoteLimit(this)"> ' . esc_html( $opt ) . '</label>';
-                    }
-                } else {
-                    foreach ( $opzioni as $i => $opt ) {
-                        echo '<label class="gf-voto__opt"><input type="radio" name="opzione" value="' . (int) $i . '" required> ' . esc_html( $opt ) . '</label>';
-                    }
+                echo '<div class="gf-opts">';
+                $type = $max > 1 ? 'checkbox' : 'radio';
+                $name = $max > 1 ? 'opzione[]' : 'opzione';
+                foreach ( $opzioni as $i => $opt ) {
+                    $extra = $max > 1 ? ' data-vmax="' . (int) $max . '" onclick="gfVoteLimit(this)"' : ' required';
+                    echo '<label class="gf-opt"><input type="' . $type . '" name="' . $name . '" value="' . (int) $i . '"' . $extra . '><span class="gf-opt__txt">' . esc_html( $opt ) . '</span></label>';
                 }
-                echo '<p class="gf-muted">Il tuo voto vale <strong>' . (int) $peso . '</strong>' . ( $peso > 1 ? ' (incluse le deleghe ricevute)' : '' ) . '. ' . ( $vz['tipo'] === 'segreto' ? 'Voto segreto: non sarà collegato al tuo nome.' : '' ) . '</p>';
+                echo '</div>';
+                echo '<p class="gf-muted gf-voto__peso">Il tuo voto vale <strong>' . (int) $peso . '</strong>' . ( $peso > 1 ? ' (incluse le deleghe ricevute)' : '' ) . '.' . ( $is_seg ? ' Voto segreto: non sarà collegato al tuo nome.' : '' ) . '</p>';
                 echo '<p><button class="gf-btn gf-btn--primary" onclick="return confirm(\'Confermi il voto? Non sarà modificabile.\')">Vota</button></p></form>';
+            }
+            // QR della singola votazione (link con àncora al quesito).
+            $vurl = $page_url . '#voto-' . (int) $vz['id'];
+            $vqr  = class_exists( __NAMESPACE__ . '\\Qr' ) ? Qr::data_uri( $vurl, 150 ) : '';
+            if ( $vqr ) {
+                echo '<details class="gf-voto__qr"><summary>📱 Condividi questa votazione (QR)</summary>'
+                   . '<div style="text-align:center;margin-top:.5rem"><img src="' . esc_attr( $vqr ) . '" alt="QR votazione" style="width:150px;height:150px"><p class="gf-muted" style="font-size:.8em;word-break:break-all">' . esc_html( $vurl ) . '</p></div></details>';
             }
             echo '</article>';
         }
@@ -279,6 +293,16 @@ class Votazioni {
         return (string) ob_get_clean();
     }
 
+    /** Badge tipo (palese/segreto) + modalità (delibera/elezione + seggi). */
+    private static function badges( array $vz, int $max ): string {
+        $is_seg = $vz['tipo'] === 'segreto';
+        $mode   = $max > 1 ? 'Elezione · ' . (int) $max . ' seggi' : ( $is_seg ? 'Elezione' : 'Delibera' );
+        $tb = $is_seg
+            ? '<span class="gf-badge gf-badge--seg">🔒 Voto segreto</span>'
+            : '<span class="gf-badge gf-badge--pal">👁 Voto palese</span>';
+        return $tb . '<span class="gf-badge gf-badge--mode">' . esc_html( $mode ) . '</span>';
+    }
+
     private static function render_results( array $vz ): string {
         $opzioni = self::options( $vz );
         $res     = self::results( (int) $vz['id'] );
@@ -291,7 +315,7 @@ class Votazioni {
         $ref    = max( 1, ( $rank ? max( $rank ) : 1 ) );
         $eletti = $max > 1 ? array_slice( array_keys( $rank ), 0, $max, true ) : [];
 
-        $h  = '<article class="gf-voto"><h3>' . esc_html( $vz['titolo'] ) . ' <small class="gf-muted">(' . esc_html( $vz['tipo'] ) . ( $max > 1 ? ', ' . (int) $max . ' seggi' : '' ) . ')</small></h3>';
+        $h  = '<article class="gf-voto" id="voto-' . (int) $vz['id'] . '"><div class="gf-voto__head"><h3>' . esc_html( $vz['titolo'] ) . '</h3>' . self::badges( $vz, $max ) . '</div>';
         $h .= '<p class="gf-muted">Votanti: ' . (int) $res['turnout'] . ' · preferenze totali (pesate): ' . (int) $res['tot_peso'] . '</p>';
         $pos = 0;
         foreach ( $rank as $i => $peso ) {
@@ -331,7 +355,7 @@ class Votazioni {
         echo '<div class="gf-tablewrap"><table class="gf-table"><thead><tr><th>Quesito</th><th>Tipo</th><th>Stato</th><th></th></tr></thead><tbody>';
         if ( ! $all ) { echo '<tr><td colspan="4" class="gf-muted">Nessuna votazione.</td></tr>'; }
         foreach ( $all as $vz ) {
-            echo '<tr><td><strong>' . esc_html( $vz['titolo'] ) . '</strong></td><td>' . esc_html( $vz['tipo'] ) . '</td><td>' . esc_html( $vz['stato'] ) . '</td><td style="white-space:nowrap">';
+            echo '<tr><td><strong>' . esc_html( $vz['titolo'] ) . '</strong></td><td>' . esc_html( $vz['tipo'] ) . ( (int) ( $vz['max_scelte'] ?? 1 ) > 1 ? ' · ' . (int) $vz['max_scelte'] . ' seggi' : '' ) . '</td><td>' . esc_html( $vz['stato'] ) . '</td><td style="white-space:nowrap">';
             $btn = static function ( $op, $lbl ) use ( $vz, $action ) {
                 return '<form method="post" action="' . $action . '" style="display:inline">' . wp_nonce_field( 'gfoss_voto', '_wpnonce', true, false )
                     . '<input type="hidden" name="action" value="gfoss_voto_state"><input type="hidden" name="id" value="' . (int) $vz['id'] . '"><input type="hidden" name="op" value="' . esc_attr( $op ) . '"><button class="gf-btn gf-btn--ghost gf-btn--sm">' . esc_html( $lbl ) . '</button></form> ';

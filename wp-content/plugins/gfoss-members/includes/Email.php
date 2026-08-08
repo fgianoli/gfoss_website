@@ -65,6 +65,12 @@ class Email {
                 'body'         => "<h2 style=\"margin-top:0\">Benvenuto/a in GFOSS.it APS 🌍</h2>\n<p>Ciao <strong>{nome}</strong>, la tua iscrizione è ora <strong>effettiva</strong>.</p>\n<p>Numero socio: <code>{numero_socio}</code></p>\n<p>Riceverai un'email separata da WordPress per impostare la tua password. Una volta fatto, accedi all'area riservata:</p>\n<p>{bottone_area}</p>\n<p>Da lì potrai scaricare la tessera digitale, vedere lo storico quote, iscriverti agli eventi e accedere ai documenti riservati ai soci.</p>\n<p>Grazie per supportare il software libero geografico in Italia!</p>",
                 'placeholders' => [ 'nome', 'numero_socio', 'anno', 'link_area', 'bottone_area' ],
             ],
+            'socio_welcome_manual' => [
+                'label'        => 'Benvenuto socio (inserito dal direttivo)',
+                'subject'      => '[GFOSS.it] Benvenuto/a — imposta la tua password',
+                'body'         => "<h2 style=\"margin-top:0\">Benvenuto/a in GFOSS.it APS 🌍</h2>\n<p>Ciao <strong>{nome}</strong>, il Consiglio Direttivo ti ha registrato come socio di GFOSS.it APS.</p>\n<p>Numero socio: <code>{numero_socio}</code></p>\n<p>Per prima cosa imposta la tua password personale:</p>\n<p>{bottone_password}</p>\n<p style=\"color:#4A5C6A;font-size:13px\">Se il pulsante non funziona, copia e incolla questo link nel browser:<br>{link_password}</p>\n<p>Fatto questo, potrai accedere all'area riservata ai soci:</p>\n<p>{bottone_area}</p>\n<p>Nell'area soci trovi tessera digitale, stato quota, eventi, documenti e votazioni. Grazie per supportare il software libero geografico in Italia!</p>",
+                'placeholders' => [ 'nome', 'numero_socio', 'link_password', 'bottone_password', 'link_area', 'bottone_area' ],
+            ],
             'quota_renewal_reminder' => [
                 'label'        => 'Promemoria rinnovo quota',
                 'subject'      => '[GFOSS.it] Promemoria rinnovo quota {anno}',
@@ -294,6 +300,26 @@ class Email {
             'anno'         => esc_html( gmdate( 'Y' ) ),
             'link_area'    => esc_url( $area ),
             'bottone_area' => self::button( $area, 'Apri area soci', '#1A6FA0' ),
+        ] );
+        self::send( $u->user_email, $r['subject'], $r['body'] );
+    }
+
+    /** Benvenuto per il socio creato manualmente dal direttivo, con link imposta-password. */
+    public static function socio_welcome_manual( int $user_id ): void {
+        $u = get_userdata( $user_id );
+        if ( ! $u ) { return; }
+        $key = get_password_reset_key( $u );
+        $rp  = is_wp_error( $key )
+            ? wp_lostpassword_url()
+            : network_site_url( 'wp-login.php?action=rp&key=' . $key . '&login=' . rawurlencode( $u->user_login ), 'login' );
+        $area = home_url( '/area-soci/' );
+        $r = self::render( 'socio_welcome_manual', [
+            'nome'             => esc_html( $u->display_name ),
+            'numero_socio'     => esc_html( (string) get_user_meta( $user_id, 'gf_numero_socio', true ) ),
+            'link_password'    => esc_url( $rp ),
+            'bottone_password' => self::button( $rp, 'Imposta la password', '#1A6FA0' ),
+            'link_area'        => esc_url( $area ),
+            'bottone_area'     => self::button( $area, 'Apri area soci', '#5DA34D' ),
         ] );
         self::send( $u->user_email, $r['subject'], $r['body'] );
     }

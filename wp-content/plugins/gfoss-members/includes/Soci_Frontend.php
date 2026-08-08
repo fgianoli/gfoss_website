@@ -73,8 +73,13 @@ class Soci_Frontend {
         update_user_meta( $uid, 'gf_numero_socio', Candidatura::next_numero_socio() );
         $cf = sanitize_text_field( wp_unslash( $_POST['gf_codice_fiscale'] ?? '' ) );
         if ( $cf !== '' ) { update_user_meta( $uid, 'gf_codice_fiscale', $cf ); }
-        // Email all'utente con il link per impostare/cambiare la password.
-        wp_new_user_notification( $uid, null, 'user' );
+        // Email di benvenuto GFOSS (con link imposta-password) + notifica all'admin.
+        if ( class_exists( __NAMESPACE__ . '\\Email' ) ) {
+            Email::socio_welcome_manual( $uid );
+        } else {
+            wp_new_user_notification( $uid, null, 'user' );
+        }
+        wp_new_user_notification( $uid, null, 'admin' );
         self::back( $uid, 'added' );
     }
 

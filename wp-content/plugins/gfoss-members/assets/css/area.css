@@ -39,12 +39,27 @@
 .gf-tool__txt small { color: #4A5C6A; font-size: .78rem; }
 
 /* Votazioni */
-.gf-voto { border-top: 1px solid #E2E8EC; padding: 1rem 0; }
+.gf-voto { border-top: 1px solid #E2E8EC; padding: 1.1rem 0; }
 .gf-voto:first-of-type { border-top: 0; }
-.gf-voto h3 { margin: 0 0 .3rem; }
-.gf-voto__opt { display: block; padding: .35rem .2rem; }
-.gf-voto__bar { margin: .4rem 0; font-size: .9rem; }
-.gf-voto__track { background: #E9EEF2; border-radius: 6px; height: 12px; overflow: hidden; margin-top: .2rem; }
+.gf-voto h3 { margin: 0; }
+.gf-voto__head { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .35rem; }
+.gf-badge { display: inline-block; padding: .14rem .55rem; border-radius: 999px; font-size: .72rem; font-weight: 700; letter-spacing: .02em; }
+.gf-badge--seg  { background: #FCE3DF; color: #C0392B; }
+.gf-badge--pal  { background: #E5F2DF; color: #3D7A2C; }
+.gf-badge--mode { background: #E2ECF3; color: #1A6FA0; }
+.gf-voto__instr { background: #F3F7FA; border-left: 3px solid #1A6FA0; padding: .5rem .7rem; border-radius: 0 6px 6px 0; margin: .5rem 0 .8rem; }
+.gf-voto__block { color: #B26A00; font-weight: 500; }
+.gf-opts { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); margin: .5rem 0 .2rem; }
+.gf-opt { display: flex; align-items: center; gap: .55rem; padding: .6rem .8rem; border: 1px solid #C7D3DB; border-radius: 8px; cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; }
+.gf-opt:hover { border-color: #1A6FA0; background: #F7FAFC; }
+.gf-opt input { margin: 0; flex: 0 0 auto; }
+.gf-opt__txt { font-size: .95rem; }
+.gf-opt:has(input:checked) { border-color: #1A6FA0; background: #EAF3F8; box-shadow: 0 0 0 1px #1A6FA0; }
+.gf-voto__peso { margin: .4rem 0 .6rem; }
+.gf-voto__qr { margin-top: .6rem; }
+.gf-voto__qr summary { cursor: pointer; color: #1A6FA0; font-size: .85rem; }
+.gf-voto__bar { margin: .5rem 0; font-size: .92rem; }
+.gf-voto__track { background: #E9EEF2; border-radius: 6px; height: 12px; overflow: hidden; margin-top: .25rem; }
 .gf-voto__fill { background: #1A6FA0; height: 100%; }
 
 /* Rubrica soci (bio) */
