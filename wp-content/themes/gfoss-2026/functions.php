@@ -6,7 +6,7 @@
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
-define( 'GFOSS_THEME_VERSION', '1.3.0' );
+define( 'GFOSS_THEME_VERSION', '1.3.1' );
 define( 'GFOSS_THEME_DIR', get_template_directory() );
 define( 'GFOSS_THEME_URI', get_template_directory_uri() );
 
@@ -43,17 +43,16 @@ add_action( 'login_enqueue_scripts', function () {
         $src = wp_get_attachment_image_src( $cid, 'full' );
         if ( $src ) { $logo = $src[0]; }
     }
-    if ( ! $logo && is_file( GFOSS_THEME_DIR . '/assets/img/logo.png' ) ) {
-        $logo = GFOSS_THEME_URI . '/assets/img/logo.png';
-    }
+    if ( ! $logo ) { $logo = GFOSS_THEME_URI . '/assets/img/logo.png'; } // fallback garantito (asset del tema)
     ?>
     <style>
       body.login { background: #EEF3F6; }
       #login { padding-top: 5%; width: 340px; }
       .login h1 a {
-        <?php if ( $logo ) : ?>background-image: url('<?php echo esc_url( $logo ); ?>');<?php endif; ?>
-        background-size: contain; background-position: center bottom;
-        width: 260px; height: 96px; margin: 0 auto 10px;
+        background-image: url('<?php echo esc_url( $logo ); ?>') !important;
+        background-size: contain !important;
+        background-position: center bottom !important;
+        width: 260px !important; height: 96px !important; margin: 0 auto 10px !important;
       }
       #loginform, #registerform, #lostpasswordform {
         border: 1px solid #E2E8EC; border-top: 4px solid #1A6FA0;
