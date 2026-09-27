@@ -29,7 +29,7 @@ class Area_Personale {
             'gfoss_area_personale', 'gfoss_iscrizione_form', 'gfoss_verifica_tessera',
             'gfoss_eventi', 'gfoss_materiali', 'gfoss_mappa_soci', 'gfoss_convocazioni',
             'gfoss_documenti_riservati', 'gfoss_progetti', 'gfoss_sondaggi',
-            'gfoss_registro_volontari', 'gfoss_gestione_eventi', 'gfoss_gestione_soci', 'gfoss_scrivi_news',
+            'gfoss_registro_volontari', 'gfoss_gestione_eventi', 'gfoss_gestione_soci', 'gfoss_scrivi_news', 'gfoss_gestione_documenti',
             'gfoss_console_direttivo', 'gfoss_comunicazioni_soci', 'gfoss_votazioni', 'gfoss_elenco_soci', 'gfoss_bilanci',
         ];
         foreach ( $shortcodes as $sc ) {

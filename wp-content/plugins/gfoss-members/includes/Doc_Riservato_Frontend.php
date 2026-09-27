@@ -170,6 +170,20 @@ class Doc_Riservato_Frontend {
         exit;
     }
 
+    /** Etichetta e variante colore del badge formato. @return array{0:string,1:string} */
+    private static function type_badge( string $filename ): array {
+        $ext = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
+        $map = [
+            'pdf' => 'pdf',
+            'odt' => 'doc', 'ott' => 'doc', 'doc' => 'doc', 'docx' => 'doc', 'rtf' => 'doc', 'txt' => 'doc',
+            'ods' => 'xls', 'ots' => 'xls', 'xls' => 'xls', 'xlsx' => 'xls', 'csv' => 'xls',
+            'odp' => 'ppt', 'otp' => 'ppt', 'ppt' => 'ppt', 'pptx' => 'ppt',
+            'zip' => 'zip', '7z' => 'zip',
+            'png' => 'img', 'jpg' => 'img', 'jpeg' => 'img', 'svg' => 'img', 'odg' => 'img',
+        ];
+        return [ $ext !== '' ? strtoupper( $ext ) : '—', $map[ $ext ] ?? 'zip' ];
+    }
+
     public static function render(): string {
         if ( ! self::can() ) {
             return '<div class="gf-card gf-card--warn">Sezione riservata al Consiglio Direttivo.</div>';
@@ -180,6 +194,7 @@ class Doc_Riservato_Frontend {
         $edit   = (int) ( $_GET['doc_edit'] ?? 0 );
         $ed     = $edit ? get_post( $edit ) : null;
         if ( $ed && $ed->post_type !== Doc_Riservato::CPT ) { $ed = null; }
+        $max    = size_format( wp_max_upload_size() );
 
         $docs = get_posts( [
             'post_type'      => Doc_Riservato::CPT,
@@ -188,111 +203,186 @@ class Doc_Riservato_Frontend {
             'orderby'        => 'date',
             'order'          => 'DESC',
         ] );
-        $cats = [];
+        $by_cat = [];
         foreach ( $docs as $d ) {
             $c = (string) get_post_meta( $d->ID, '_gfoss_doc_cat', true );
-            if ( $c !== '' ) { $cats[ $c ] = true; }
+            $by_cat[ $c !== '' ? $c : 'Generale' ][] = $d;
         }
-        ksort( $cats );
+        ksort( $by_cat );
+        $published = count( array_filter( $docs, static fn( $d ) => $d->post_status !== 'draft' ) );
+        $area_pg   = (int) get_option( 'gfoss_page_documenti_soci' );
 
         ob_start();
-        echo '<div class="gf-area gf-vol">';
-        echo '<header class="gf-area__head"><div><p class="gf-area__eyebrow">Consiglio Direttivo</p><h1 class="gf-area__title">Documenti riservati ai soci</h1><p class="gf-area__sub">Carica modulistica, verbali e materiali visibili solo ai soci in regola con la quota.</p></div></header>';
+        echo '<div class="gf-area gf-docman">';
+        echo '<header class="gf-area__head"><div><p class="gf-area__eyebrow">Consiglio Direttivo</p><h1 class="gf-area__title">Documenti riservati ai soci</h1>'
+           . '<p class="gf-area__sub">Modulistica, verbali e materiali visibili solo ai soci in regola con la quota.</p></div>';
+        if ( $area_pg ) {
+            echo '<a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( get_permalink( $area_pg ) ) . '" target="_blank" rel="noopener">Vedi come la vedono i soci ↗</a>';
+        }
+        echo '</header>';
 
         $n   = (int) ( $_GET['n'] ?? 0 );
         $bad = (int) ( $_GET['bad'] ?? 0 );
         $notes = [
-            'saved'   => [ 'success', ( $n === 1 ? '1 documento caricato.' : $n . ' documenti caricati.' ) . ( $bad ? ' ' . $bad . ' file scartati (formato non ammesso o errore di caricamento).' : '' ) ],
-            'updated' => [ 'success', 'Documento aggiornato.' ],
-            'deleted' => [ 'success', 'Documento eliminato.' ],
+            'saved'   => [ 'ok',   ( $n === 1 ? '1 documento caricato.' : $n . ' documenti caricati.' ) . ( $bad ? ' ' . $bad . ' file scartati (formato non ammesso o errore di caricamento).' : '' ) ],
+            'updated' => [ 'ok',   'Documento aggiornato.' ],
+            'deleted' => [ 'ok',   'Documento eliminato.' ],
             'nofile'  => [ 'warn', 'Seleziona almeno un file da caricare.' ],
             'notitle' => [ 'warn', 'Il titolo è obbligatorio.' ],
-            'badfile' => [ 'warn', 'File non caricato: formato non ammesso o errore di caricamento (max ' . size_format( wp_max_upload_size() ) . ').' ],
-            'toobig'  => [ 'warn', 'Invio troppo grande (limite ' . size_format( wp_max_upload_size() ) . ' in totale): carica i file in più volte.' ],
+            'badfile' => [ 'warn', 'File non caricato: formato non ammesso o errore di caricamento (max ' . $max . ').' ],
+            'toobig'  => [ 'warn', 'Invio troppo grande (limite ' . $max . ' in totale): carica i file in più volte.' ],
             'err'     => [ 'warn', 'Documento non trovato.' ],
         ];
-        if ( isset( $notes[ $msg ] ) ) { echo '<div class="gf-card gf-card--' . esc_attr( $notes[ $msg ][0] ) . '">' . esc_html( $notes[ $msg ][1] ) . '</div>'; }
+        if ( isset( $notes[ $msg ] ) ) {
+            echo '<div class="gf-card--' . esc_attr( $notes[ $msg ][0] ) . ' gf-docman__note">' . ( $notes[ $msg ][0] === 'ok' ? '✓ ' : '⚠ ' ) . esc_html( $notes[ $msg ][1] ) . '</div>';
+        }
 
-        // Form
+        // KPI
+        echo '<div class="gf-kpis gf-docman__kpis">';
+        foreach ( [ [ count( $docs ), 'Documenti', '#1A6FA0' ], [ $published, 'Visibili ai soci', '#5DA34D' ], [ count( $by_cat ), 'Categorie', '#B26A00' ] ] as $k ) {
+            echo '<div class="gf-kpi"><div class="gf-kpi__num" style="color:' . esc_attr( $k[2] ) . '">' . (int) $k[0] . '</div><div class="gf-kpi__lbl">' . esc_html( $k[1] ) . '</div></div>';
+        }
+        echo '</div>';
+
+        // ---- Form caricamento / modifica
         $cur_cat = $ed ? (string) get_post_meta( $ed->ID, '_gfoss_doc_cat', true ) : '';
-        echo '<section class="gf-card"><h2 style="margin-top:0">' . ( $ed ? 'Modifica documento' : 'Carica documenti' ) . '</h2>';
+        $draft   = $ed && $ed->post_status === 'draft';
+        echo '<section class="gf-area__card gf-docman__upload' . ( $ed ? ' is-edit' : '' ) . '" id="gf-doc-form">';
+        echo '<header class="gf-area__card-head"><h2>' . ( $ed ? '✏️ Modifica «' . esc_html( $ed->post_title ) . '»' : '⬆️ Carica nuovi documenti' ) . '</h2>';
+        if ( $ed ) { echo '<a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( remove_query_arg( [ 'doc_edit', 'msg' ] ) ) . '">Annulla</a>'; }
+        echo '</header>';
         echo '<form method="post" action="' . $action . '" class="gf-form" enctype="multipart/form-data">' . $nonce . '<input type="hidden" name="action" value="gfoss_doc_save">';
         if ( $ed ) { echo '<input type="hidden" name="doc_id" value="' . (int) $ed->ID . '">'; }
-        echo '<div class="gf-grid">';
-        if ( $ed ) {
-            $cur = (string) get_post_meta( $ed->ID, '_gfoss_doc_name', true );
-            echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Sostituisci file (facoltativo)' . ( $cur ? ' — attuale: ' . esc_html( $cur ) : '' ) . '</span><input type="file" name="files[]"></label>';
-        } else {
-            echo '<div class="gf-field gf-col-2"><span class="gf-field__lbl">File * (ognuno diventa un documento)</span>'
-               . '<label class="gf-dropzone" id="gf-doc-drop" style="display:block;position:relative;border:2px dashed #9bb;border-radius:10px;padding:1.4rem;text-align:center;cursor:pointer">'
-               . '<strong>Trascina qui i file</strong> oppure clicca per sceglierli'
-               . '<input type="file" name="files[]" id="gf-doc-files" multiple required style="position:absolute;width:1px;height:1px;opacity:0">'
-               . '<ul id="gf-doc-list" class="gf-muted" style="list-style:none;margin:.8rem 0 0;padding:0;font-size:.9em;text-align:left"></ul>'
-               . '</label></div>';
-            ?>
-            <script>
-            (function(){
-                var zone = document.getElementById('gf-doc-drop'), input = document.getElementById('gf-doc-files'), list = document.getElementById('gf-doc-list');
-                if (!zone || !input || typeof DataTransfer === 'undefined') return;
-                var dt = new DataTransfer();
-                function sync(){
-                    input.files = dt.files;
-                    list.innerHTML = '';
-                    Array.prototype.forEach.call(dt.files, function(f, i){
-                        var li = document.createElement('li');
-                        li.textContent = '📄 ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB) ';
-                        var x = document.createElement('button');
-                        x.type = 'button'; x.textContent = '✕'; x.className = 'gf-btn gf-btn--ghost gf-btn--sm';
-                        x.addEventListener('click', function(e){ e.preventDefault(); e.stopPropagation(); dt.items.remove(i); sync(); });
-                        li.appendChild(x); list.appendChild(li);
-                    });
-                }
-                function add(files){ Array.prototype.forEach.call(files, function(f){ if (f.size > 0 || f.type) dt.items.add(f); }); sync(); }
-                input.addEventListener('change', function(){ var picked = Array.prototype.slice.call(input.files); input.files = dt.files; add(picked); });
-                ['dragenter','dragover'].forEach(function(ev){ zone.addEventListener(ev, function(e){ e.preventDefault(); zone.style.background = 'rgba(93,163,77,.12)'; }); });
-                ['dragleave','drop'].forEach(function(ev){ zone.addEventListener(ev, function(e){ e.preventDefault(); zone.style.background = ''; }); });
-                zone.addEventListener('drop', function(e){ if (e.dataTransfer && e.dataTransfer.files) add(e.dataTransfer.files); });
-            })();
-            </script>
-            <?php
-        }
-        echo '<label class="gf-field"><span class="gf-field__lbl">Titolo' . ( $ed ? ' *' : '' ) . '</span><input type="text" name="titolo" value="' . ( $ed ? esc_attr( $ed->post_title ) : '' ) . '"' . ( $ed ? ' required' : ' placeholder="Vuoto = nome del file"' ) . '></label>';
+
+        $cur_name = $ed ? (string) get_post_meta( $ed->ID, '_gfoss_doc_name', true ) : '';
+        echo '<label class="gf-drop" id="gf-doc-drop">'
+           . '<input type="file" name="files[]" id="gf-doc-files"' . ( $ed ? '' : ' multiple required' ) . ' class="gf-drop__input">'
+           . '<span class="gf-drop__ico" aria-hidden="true">📂</span>'
+           . '<span class="gf-drop__title">' . ( $ed ? 'Trascina qui il nuovo file per sostituirlo' : 'Trascina qui i file' ) . '</span>'
+           . '<span class="gf-drop__sub">oppure <u>clicca per sceglierli</u> dal computer · max ' . esc_html( $max ) . ' per invio</span>'
+           . ( $cur_name !== '' ? '<span class="gf-drop__sub">File attuale: <strong>' . esc_html( $cur_name ) . '</strong> (lascia vuoto per mantenerlo)</span>' : '' )
+           . '</label>';
+        echo '<ul class="gf-chips" id="gf-doc-list" aria-live="polite"></ul>';
+
+        echo '<div class="gf-grid gf-docman__fields">';
+        echo '<label class="gf-field"><span class="gf-field__lbl">Titolo' . ( $ed ? ' *' : '' ) . '</span><input type="text" name="titolo" value="' . ( $ed ? esc_attr( $ed->post_title ) : '' ) . '"' . ( $ed ? ' required' : ' placeholder="Se vuoto, uso il nome del file"' ) . '></label>';
         echo '<label class="gf-field"><span class="gf-field__lbl">Categoria</span><input type="text" name="categoria" list="gf-doc-cats" value="' . esc_attr( $cur_cat ) . '" placeholder="es. Modulistica, Verbali, Bilanci"></label>';
         echo '<datalist id="gf-doc-cats">';
-        foreach ( array_keys( $cats ) as $c ) { echo '<option value="' . esc_attr( $c ) . '">'; }
+        foreach ( array_keys( $by_cat ) as $c ) { echo '<option value="' . esc_attr( $c ) . '">'; }
         echo '</datalist>';
-        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Descrizione (facoltativa)</span><textarea name="descrizione" rows="2">' . ( $ed ? esc_textarea( $ed->post_content ) : '' ) . '</textarea></label>';
-        $draft = $ed && $ed->post_status === 'draft';
-        echo '<label class="gf-field"><span class="gf-field__lbl">Stato</span><select name="stato"><option value="publish"' . selected( ! $draft, true, false ) . '>Pubblicato (visibile ai soci)</option><option value="draft"' . selected( $draft, true, false ) . '>Bozza (nascosto)</option></select></label>';
+        echo '<label class="gf-field gf-col-2"><span class="gf-field__lbl">Descrizione <small class="gf-muted">(facoltativa, la vedono i soci sotto il titolo)</small></span><textarea name="descrizione" rows="2">' . ( $ed ? esc_textarea( $ed->post_content ) : '' ) . '</textarea></label>';
         echo '</div>';
-        echo '<p class="gf-muted" style="font-size:.85em">Formati ammessi: ' . esc_html( implode( ', ', self::EXT ) ) . '. Dimensione massima: ' . esc_html( size_format( wp_max_upload_size() ) ) . ' per invio.</p>';
-        echo '<p class="gf-actions"><button class="gf-btn gf-btn--primary">' . ( $ed ? 'Aggiorna' : 'Carica' ) . '</button>';
-        if ( $ed ) { echo ' <a class="gf-btn gf-btn--ghost" href="' . esc_url( remove_query_arg( [ 'doc_edit', 'msg' ] ) ) . '">Annulla</a>'; }
-        echo '</p></form></section>';
 
-        // Elenco
-        echo '<section class="gf-card"><h2 style="margin-top:0">Documenti presenti</h2>';
+        echo '<div class="gf-docman__foot">';
+        echo '<div class="gf-seg" role="radiogroup" aria-label="Visibilità">'
+           . '<label><input type="radio" name="stato" value="publish"' . checked( ! $draft, true, false ) . '><span>👁 Pubblicato</span></label>'
+           . '<label><input type="radio" name="stato" value="draft"' . checked( $draft, true, false ) . '><span>🔒 Bozza</span></label>'
+           . '</div>';
+        echo '<button class="gf-btn gf-btn--primary" id="gf-doc-submit">' . ( $ed ? 'Salva modifiche' : 'Carica documenti' ) . '</button>';
+        echo '</div>';
+        echo '<details class="gf-docman__formats"><summary>Formati ammessi</summary><p class="gf-muted">' . esc_html( implode( ', ', self::EXT ) ) . '</p></details>';
+        echo '</form></section>';
+
+        // ---- Elenco per categoria
+        echo '<section class="gf-area__card gf-docman__list">';
+        echo '<header class="gf-area__card-head"><h2>📚 Documenti presenti</h2>';
+        if ( $docs ) { echo '<input type="search" class="gf-docman__search" id="gf-doc-search" placeholder="🔍 Cerca per titolo o file…">'; }
+        echo '</header>';
         if ( ! $docs ) {
-            echo '<p class="gf-muted">Nessun documento caricato.</p>';
+            echo '<div class="gf-docman__empty"><span aria-hidden="true">🗂️</span><p>Nessun documento caricato.<br><small class="gf-muted">Trascina i primi file nel riquadro qui sopra.</small></p></div>';
         } else {
             $rest_nonce = wp_create_nonce( 'wp_rest' );
-            echo '<div class="gf-tablewrap"><table class="gf-table"><thead><tr><th>Titolo</th><th>Categoria</th><th>Stato</th><th>Data</th><th></th></tr></thead><tbody>';
-            foreach ( $docs as $d ) {
-                $c     = (string) get_post_meta( $d->ID, '_gfoss_doc_cat', true );
-                $has   = self::private_path( $d->ID ) !== '' || (int) get_post_meta( $d->ID, '_gfoss_doc_file', true );
-                $dl    = add_query_arg( '_wpnonce', $rest_nonce, rest_url( 'gfoss/v1/doc/' . $d->ID ) );
-                $stato = $d->post_status === 'draft' ? '<span class="gf-muted">Bozza</span>' : 'Pubblicato';
-                echo '<tr><td><strong>' . esc_html( $d->post_title ) . '</strong>' . ( $has ? '' : ' <small class="gf-muted">(senza file)</small>' ) . '</td>';
-                echo '<td>' . esc_html( $c ?: 'Generale' ) . '</td><td>' . $stato . '</td><td>' . esc_html( get_the_date( 'd/m/Y', $d ) ) . '</td>';
-                echo '<td style="white-space:nowrap">';
-                if ( $has && $d->post_status !== 'draft' ) { echo '<a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( $dl ) . '">Scarica</a> '; }
-                echo '<a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( add_query_arg( 'doc_edit', $d->ID, remove_query_arg( 'msg' ) ) ) . '">Modifica</a> ';
-                echo '<form method="post" action="' . $action . '" style="display:inline" onsubmit="return confirm(\'Eliminare definitivamente questo documento e il suo file?\')">' . $nonce . '<input type="hidden" name="action" value="gfoss_doc_delete"><input type="hidden" name="doc_id" value="' . (int) $d->ID . '"><button class="gf-btn gf-btn--ghost gf-btn--sm">Elimina</button></form>';
-                echo '</td></tr>';
+            foreach ( $by_cat as $cat => $list ) {
+                echo '<div class="gf-docman__cat"><h3>' . esc_html( $cat ) . ' <span class="gf-docman__count">' . count( $list ) . '</span></h3><ul class="gf-docrows">';
+                foreach ( $list as $d ) {
+                    $fname = (string) get_post_meta( $d->ID, '_gfoss_doc_name', true );
+                    $ppath = self::private_path( $d->ID );
+                    $size  = ( $ppath && is_file( $ppath ) ) ? size_format( (int) filesize( $ppath ) ) : '';
+                    if ( $fname === '' ) {
+                        $att   = (int) get_post_meta( $d->ID, '_gfoss_doc_file', true );
+                        $apath = $att ? (string) get_attached_file( $att ) : '';
+                        $fname = $apath ? basename( $apath ) : '';
+                        $size  = ( $apath && is_file( $apath ) ) ? size_format( (int) filesize( $apath ) ) : '';
+                    }
+                    [ $lbl, $kind ] = self::type_badge( $fname );
+                    $is_draft = $d->post_status === 'draft';
+                    $dl = add_query_arg( '_wpnonce', $rest_nonce, rest_url( 'gfoss/v1/doc/' . $d->ID ) );
+                    $search = strtolower( $d->post_title . ' ' . $fname . ' ' . $cat );
+
+                    echo '<li class="gf-docrow' . ( $is_draft ? ' is-draft' : '' ) . ( $ed && $ed->ID === $d->ID ? ' is-current' : '' ) . '" data-search="' . esc_attr( $search ) . '">';
+                    echo '<span class="gf-ftype gf-ftype--' . esc_attr( $kind ) . '">' . esc_html( $lbl ) . '</span>';
+                    echo '<div class="gf-docrow__main"><strong>' . esc_html( $d->post_title ) . '</strong>'
+                       . '<small>' . ( $fname !== '' ? esc_html( $fname ) : '<em>nessun file allegato</em>' ) . ( $size ? ' · ' . esc_html( $size ) : '' ) . ' · ' . esc_html( get_the_date( 'd/m/Y', $d ) ) . '</small></div>';
+                    echo '<span class="chip ' . ( $is_draft ? 'chip--warn">Bozza' : 'chip--ok">Pubblicato' ) . '</span>';
+                    echo '<div class="gf-docrow__act">';
+                    if ( $fname !== '' ) { echo '<a class="gf-iconbtn" href="' . esc_url( $dl ) . '" title="Scarica" aria-label="Scarica">⬇</a>'; }
+                    echo '<a class="gf-iconbtn" href="' . esc_url( add_query_arg( 'doc_edit', $d->ID, remove_query_arg( 'msg' ) ) ) . '#gf-doc-form" title="Modifica" aria-label="Modifica">✎</a>';
+                    echo '<form method="post" action="' . $action . '" onsubmit="return confirm(\'Eliminare definitivamente «' . esc_js( $d->post_title ) . '» e il suo file?\')">' . $nonce . '<input type="hidden" name="action" value="gfoss_doc_delete"><input type="hidden" name="doc_id" value="' . (int) $d->ID . '"><button class="gf-iconbtn gf-iconbtn--danger" title="Elimina" aria-label="Elimina">🗑</button></form>';
+                    echo '</div></li>';
+                }
+                echo '</ul></div>';
             }
-            echo '</tbody></table></div>';
+            echo '<p class="gf-muted gf-docman__nores" id="gf-doc-nores" hidden>Nessun documento corrisponde alla ricerca.</p>';
         }
         echo '</section></div>';
+        ?>
+        <script>
+        (function(){
+            var zone = document.getElementById('gf-doc-drop'), input = document.getElementById('gf-doc-files'),
+                list = document.getElementById('gf-doc-list'), multi = input && input.multiple;
+            if (zone && input) {
+                var dt = (typeof DataTransfer !== 'undefined') ? new DataTransfer() : null;
+                function human(b){ return b > 1048576 ? (b/1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b/1024)) + ' KB'; }
+                function render(files){
+                    list.innerHTML = '';
+                    Array.prototype.forEach.call(files, function(f, i){
+                        var li = document.createElement('li'), ext = (f.name.split('.').pop() || '').toUpperCase();
+                        li.className = 'gf-chip';
+                        li.innerHTML = '<span class="gf-chip__ext"></span><span class="gf-chip__name"></span><span class="gf-chip__size"></span>';
+                        li.children[0].textContent = ext; li.children[1].textContent = f.name; li.children[2].textContent = human(f.size);
+                        if (dt) {
+                            var x = document.createElement('button');
+                            x.type = 'button'; x.className = 'gf-chip__x'; x.textContent = '✕'; x.title = 'Togli';
+                            x.addEventListener('click', function(){ dt.items.remove(i); sync(); });
+                            li.appendChild(x);
+                        }
+                        list.appendChild(li);
+                    });
+                    zone.classList.toggle('has-files', files.length > 0);
+                }
+                function sync(){ input.files = dt.files; render(dt.files); }
+                function add(files){
+                    if (!dt) { render(input.files); return; }
+                    if (!multi) { dt.items.clear(); files = [files[0]]; }
+                    Array.prototype.forEach.call(files, function(f){ if (f) dt.items.add(f); });
+                    sync();
+                }
+                input.addEventListener('change', function(){
+                    if (!dt) { render(input.files); return; }
+                    var picked = Array.prototype.slice.call(input.files); input.files = dt.files; add(picked);
+                });
+                ['dragenter','dragover'].forEach(function(ev){ zone.addEventListener(ev, function(e){ e.preventDefault(); zone.classList.add('is-over'); }); });
+                ['dragleave','drop'].forEach(function(ev){ zone.addEventListener(ev, function(e){ e.preventDefault(); zone.classList.remove('is-over'); }); });
+                zone.addEventListener('drop', function(e){ if (e.dataTransfer && e.dataTransfer.files.length) add(e.dataTransfer.files); });
+                // evita che un file lasciato fuori dal riquadro venga aperto dal browser
+                window.addEventListener('dragover', function(e){ e.preventDefault(); });
+                window.addEventListener('drop', function(e){ e.preventDefault(); });
+                var form = zone.closest('form'), btn = document.getElementById('gf-doc-submit');
+                if (form && btn) form.addEventListener('submit', function(){ btn.disabled = true; btn.textContent = 'Caricamento in corso…'; });
+            }
+            var q = document.getElementById('gf-doc-search');
+            if (q) q.addEventListener('input', function(){
+                var t = q.value.trim().toLowerCase(), any = false;
+                document.querySelectorAll('.gf-docman__cat').forEach(function(cat){
+                    var vis = 0;
+                    cat.querySelectorAll('.gf-docrow').forEach(function(r){ var ok = !t || r.dataset.search.indexOf(t) !== -1; r.hidden = !ok; if (ok) vis++; });
+                    cat.hidden = vis === 0; if (vis) any = true;
+                });
+                document.getElementById('gf-doc-nores').hidden = any;
+            });
+        })();
+        </script>
+        <?php
         return (string) ob_get_clean();
     }
 }
