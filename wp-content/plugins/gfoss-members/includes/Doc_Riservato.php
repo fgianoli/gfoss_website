@@ -217,31 +217,83 @@ class Doc_Riservato {
             'orderby'        => 'date',
             'order'          => 'DESC',
         ] );
-        if ( ! $docs ) {
-            return '<div class="gf-card">Non ci sono ancora documenti pubblicati.</div>';
-        }
-
         $by_cat = [];
         foreach ( $docs as $d ) {
             $cat = (string) get_post_meta( $d->ID, '_gfoss_doc_cat', true ) ?: 'Generale';
             $by_cat[ $cat ][] = $d;
         }
         ksort( $by_cat );
+        $manage = current_user_can( Roles::CAP_MANAGE_SOCI )
+            ? get_posts( [ 'post_type' => 'page', 'name' => 'gestione-documenti', 'post_status' => 'publish', 'numberposts' => 1 ] )
+            : [];
 
         ob_start();
-        echo '<div class="gf-docs">';
+        echo '<div class="gf-area gf-docman gf-docs">';
+        echo '<div class="gf-docs__intro"><span class="gf-docs__lock" aria-hidden="true">🔒</span><p>Area riservata ai soci in regola con la quota ' . esc_html( (string) $year ) . '. '
+           . 'Qui trovi modulistica, deleghe e materiali dell\'associazione: clicca su un documento per scaricarlo.</p>';
+        if ( $manage ) {
+            echo '<a class="gf-btn gf-btn--ghost gf-btn--sm" href="' . esc_url( get_permalink( $manage[0] ) ) . '">Gestisci documenti</a>';
+        }
+        echo '</div>';
+
+        if ( ! $docs ) {
+            echo '<div class="gf-area__card gf-docman__empty"><span aria-hidden="true">🗂️</span><p>Non ci sono ancora documenti pubblicati.</p></div></div>';
+            return (string) ob_get_clean();
+        }
+
+        // Filtri: categorie + ricerca
+        echo '<div class="gf-docs__bar">';
+        if ( count( $by_cat ) > 1 ) {
+            echo '<div class="gf-docs__filters" role="group" aria-label="Filtra per categoria">';
+            echo '<button type="button" class="gf-pill is-active" data-cat="">Tutti <span>' . count( $docs ) . '</span></button>';
+            foreach ( $by_cat as $cat => $list ) {
+                echo '<button type="button" class="gf-pill" data-cat="' . esc_attr( $cat ) . '">' . esc_html( $cat ) . ' <span>' . count( $list ) . '</span></button>';
+            }
+            echo '</div>';
+        }
+        echo '<input type="search" class="gf-docman__search" id="gf-doc-search" placeholder="🔍 Cerca un documento…">';
+        echo '</div>';
+
+        $nonce = wp_create_nonce( 'wp_rest' );
         foreach ( $by_cat as $cat => $list ) {
-            echo '<section class="gf-docs__cat"><h3>' . esc_html( $cat ) . '</h3><ul>';
+            echo '<section class="gf-area__card gf-docman__cat gf-docs__cat" data-cat="' . esc_attr( $cat ) . '"><h3>' . esc_html( $cat ) . ' <span class="gf-docman__count">' . count( $list ) . '</span></h3><ul class="gf-docrows">';
             foreach ( $list as $d ) {
-                $url = add_query_arg( '_wpnonce', wp_create_nonce( 'wp_rest' ), rest_url( 'gfoss/v1/doc/' . $d->ID ) );
+                [ $fname, $size ] = Doc_Riservato_Frontend::file_info( $d->ID );
+                [ $lbl, $kind ]   = Doc_Riservato_Frontend::type_badge( $fname );
+                $url  = add_query_arg( '_wpnonce', $nonce, rest_url( 'gfoss/v1/doc/' . $d->ID ) );
                 $desc = trim( wp_strip_all_tags( $d->post_content ) );
-                echo '<li><a href="' . esc_url( $url ) . '">' . esc_html( $d->post_title ) . '</a> '
-                   . '<small class="gf-muted">' . esc_html( get_the_date( 'd/m/Y', $d ) ) . '</small>'
-                   . ( $desc !== '' ? '<br><small class="gf-muted">' . esc_html( $desc ) . '</small>' : '' ) . '</li>';
+                $meta = array_filter( [ $lbl !== '—' ? $lbl : '', $size, get_the_date( 'd/m/Y', $d ) ] );
+                echo '<li class="gf-docrow" data-search="' . esc_attr( strtolower( $d->post_title . ' ' . $desc . ' ' . $fname . ' ' . $cat ) ) . '">';
+                echo '<a class="gf-docrow__link" href="' . esc_url( $url ) . '" download>';
+                echo '<span class="gf-ftype gf-ftype--' . esc_attr( $kind ) . '">' . esc_html( $lbl ) . '</span>';
+                echo '<span class="gf-docrow__main"><strong>' . esc_html( $d->post_title ) . '</strong>'
+                   . ( $desc !== '' ? '<span class="gf-docrow__desc">' . esc_html( $desc ) . '</span>' : '' )
+                   . '<small>' . esc_html( implode( ' · ', $meta ) ) . '</small></span>';
+                echo '<span class="gf-btn gf-btn--ghost gf-btn--sm gf-docrow__dl">⬇ Scarica</span>';
+                echo '</a></li>';
             }
             echo '</ul></section>';
         }
+        echo '<p class="gf-muted gf-docman__nores" id="gf-doc-nores" hidden>Nessun documento corrisponde alla ricerca.</p>';
         echo '</div>';
-        return ob_get_clean();
+        ?>
+        <script>
+        (function(){
+            var q = document.getElementById('gf-doc-search'), pills = document.querySelectorAll('.gf-docs .gf-pill'), cur = '';
+            function apply(){
+                var t = q ? q.value.trim().toLowerCase() : '', any = false;
+                document.querySelectorAll('.gf-docs__cat').forEach(function(sec){
+                    var vis = 0, inCat = !cur || sec.dataset.cat === cur;
+                    sec.querySelectorAll('.gf-docrow').forEach(function(r){ var ok = inCat && (!t || r.dataset.search.indexOf(t) !== -1); r.hidden = !ok; if (ok) vis++; });
+                    sec.hidden = vis === 0; if (vis) any = true;
+                });
+                document.getElementById('gf-doc-nores').hidden = any;
+            }
+            pills.forEach(function(p){ p.addEventListener('click', function(){ pills.forEach(function(x){ x.classList.remove('is-active'); }); p.classList.add('is-active'); cur = p.dataset.cat; apply(); }); });
+            if (q) q.addEventListener('input', apply);
+        })();
+        </script>
+        <?php
+        return (string) ob_get_clean();
     }
 }

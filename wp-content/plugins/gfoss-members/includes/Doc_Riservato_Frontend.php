@@ -170,8 +170,24 @@ class Doc_Riservato_Frontend {
         exit;
     }
 
+    /**
+     * Nome e dimensione del file di un documento (cartella protetta o, per i
+     * documenti storici, Media Library). @return array{0:string,1:string} [nome, dimensione leggibile]
+     */
+    public static function file_info( int $post_id ): array {
+        $name = (string) get_post_meta( $post_id, '_gfoss_doc_name', true );
+        $path = self::private_path( $post_id );
+        if ( $name === '' ) {
+            $att  = (int) get_post_meta( $post_id, '_gfoss_doc_file', true );
+            $path = $att ? (string) get_attached_file( $att ) : '';
+            $name = $path ? basename( $path ) : '';
+        }
+        $size = ( $path && is_file( $path ) ) ? size_format( (int) filesize( $path ) ) : '';
+        return [ $name, $size ];
+    }
+
     /** Etichetta e variante colore del badge formato. @return array{0:string,1:string} */
-    private static function type_badge( string $filename ): array {
+    public static function type_badge( string $filename ): array {
         $ext = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
         $map = [
             'pdf' => 'pdf',
@@ -295,15 +311,7 @@ class Doc_Riservato_Frontend {
             foreach ( $by_cat as $cat => $list ) {
                 echo '<div class="gf-docman__cat"><h3>' . esc_html( $cat ) . ' <span class="gf-docman__count">' . count( $list ) . '</span></h3><ul class="gf-docrows">';
                 foreach ( $list as $d ) {
-                    $fname = (string) get_post_meta( $d->ID, '_gfoss_doc_name', true );
-                    $ppath = self::private_path( $d->ID );
-                    $size  = ( $ppath && is_file( $ppath ) ) ? size_format( (int) filesize( $ppath ) ) : '';
-                    if ( $fname === '' ) {
-                        $att   = (int) get_post_meta( $d->ID, '_gfoss_doc_file', true );
-                        $apath = $att ? (string) get_attached_file( $att ) : '';
-                        $fname = $apath ? basename( $apath ) : '';
-                        $size  = ( $apath && is_file( $apath ) ) ? size_format( (int) filesize( $apath ) ) : '';
-                    }
+                    [ $fname, $size ] = self::file_info( $d->ID );
                     [ $lbl, $kind ] = self::type_badge( $fname );
                     $is_draft = $d->post_status === 'draft';
                     $dl = add_query_arg( '_wpnonce', $rest_nonce, rest_url( 'gfoss/v1/doc/' . $d->ID ) );
