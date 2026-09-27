@@ -19,3 +19,6 @@ vendor/
 # IDE
 .idea/
 .vscode/
+
+# Documenti soci da importare (restano fuori dal repo)
+documenti_soci/

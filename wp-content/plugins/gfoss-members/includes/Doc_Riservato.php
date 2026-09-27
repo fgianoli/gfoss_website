@@ -129,6 +129,12 @@ class Doc_Riservato {
             echo esc_html( (string) get_post_meta( $post_id, '_gfoss_doc_cat', true ) );
         }
         if ( $col === 'gfoss_file' ) {
+            $priv = (string) get_post_meta( $post_id, '_gfoss_doc_name', true );
+            if ( $priv !== '' ) {
+                $url = add_query_arg( '_wpnonce', wp_create_nonce( 'wp_rest' ), rest_url( 'gfoss/v1/doc/' . $post_id ) );
+                echo '<a href="' . esc_url( $url ) . '">' . esc_html( $priv ) . '</a> <small>(protetto)</small>';
+                return;
+            }
             $id = (int) get_post_meta( $post_id, '_gfoss_doc_file', true );
             echo $id ? '<a href="' . esc_url( wp_get_attachment_url( $id ) ) . '">apri</a>' : '—';
         }
@@ -147,7 +153,9 @@ class Doc_Riservato {
     }
 
     public static function can_download(): bool {
-        if ( ! is_user_logged_in() || ! current_user_can( Roles::CAP_READ_PRIVATE_DOCS ) ) { return false; }
+        if ( ! is_user_logged_in() ) { return false; }
+        if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) { return true; } // il direttivo controlla ciò che carica
+        if ( ! current_user_can( Roles::CAP_READ_PRIVATE_DOCS ) ) { return false; }
         $year = (int) gmdate( 'Y' );
         $st = Quote::status_for( get_current_user_id(), $year );
         return in_array( $st, [ 'paid', 'expiring' ], true );
@@ -164,15 +172,29 @@ class Doc_Riservato {
         if ( ! in_array( $post->post_status, [ 'publish', 'private' ], true ) ) {
             return new \WP_REST_Response( 'not-found', 404 );
         }
-        $att_id = (int) get_post_meta( $id, '_gfoss_doc_file', true );
-        $path = $att_id ? get_attached_file( $att_id ) : '';
+        // File nella cartella protetta (caricati dalla console front-end),
+        // altrimenti allegato della Media Library (documenti inseriti da wp-admin).
+        $path = Doc_Riservato_Frontend::private_path( $id );
+        $name = (string) get_post_meta( $id, '_gfoss_doc_name', true );
+        $mime = '';
+        if ( ! $path || ! is_readable( $path ) ) {
+            $att_id = (int) get_post_meta( $id, '_gfoss_doc_file', true );
+            $path   = $att_id ? (string) get_attached_file( $att_id ) : '';
+            $name   = '';
+            $mime   = $att_id ? (string) get_post_mime_type( $att_id ) : '';
+        }
         if ( ! $path || ! is_readable( $path ) ) {
             return new \WP_REST_Response( 'file-missing', 404 );
         }
-        $mime = get_post_mime_type( $att_id ) ?: 'application/octet-stream';
+        if ( $mime === '' ) {
+            $ft   = wp_check_filetype( $name ?: $path );
+            $mime = $ft['type'] ?: 'application/octet-stream';
+        }
+        $name = str_replace( [ '"', "\r", "\n" ], '', $name ?: basename( $path ) );
         nocache_headers();
         header( 'Content-Type: ' . $mime );
-        header( 'Content-Disposition: attachment; filename="' . basename( $path ) . '"' );
+        header( 'Content-Disposition: attachment; filename="' . $name . '"' );
+        header( 'X-Content-Type-Options: nosniff' );
         header( 'Content-Length: ' . (string) filesize( $path ) );
         readfile( $path );
         exit;
@@ -212,8 +234,10 @@ class Doc_Riservato {
             echo '<section class="gf-docs__cat"><h3>' . esc_html( $cat ) . '</h3><ul>';
             foreach ( $list as $d ) {
                 $url = add_query_arg( '_wpnonce', wp_create_nonce( 'wp_rest' ), rest_url( 'gfoss/v1/doc/' . $d->ID ) );
+                $desc = trim( wp_strip_all_tags( $d->post_content ) );
                 echo '<li><a href="' . esc_url( $url ) . '">' . esc_html( $d->post_title ) . '</a> '
-                   . '<small class="gf-muted">' . esc_html( get_the_date( 'd/m/Y', $d ) ) . '</small></li>';
+                   . '<small class="gf-muted">' . esc_html( get_the_date( 'd/m/Y', $d ) ) . '</small>'
+                   . ( $desc !== '' ? '<br><small class="gf-muted">' . esc_html( $desc ) . '</small>' : '' ) . '</li>';
             }
             echo '</ul></section>';
         }

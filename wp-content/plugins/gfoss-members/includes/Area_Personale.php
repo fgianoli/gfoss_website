@@ -130,6 +130,9 @@ class Area_Personale {
                     $nc = defined( 'GFOSS_NEXTCLOUD_URL' ) ? GFOSS_NEXTCLOUD_URL : ( getenv( 'GFOSS_NEXTCLOUD_URL' ) ?: '' );
                     if ( $nc ) { $tools[] = [ $nc, '🗂️', 'Documenti del Direttivo', 'Verbali e documenti riservati (Nextcloud).' ]; }
                 }
+                if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
+                    $tools[] = [ $pg_url( 'gestione-documenti', admin_url( 'edit.php?post_type=' . Doc_Riservato::CPT ) ), '📄', 'Documenti soci', 'Carica modulistica e documenti riservati ai soci.' ];
+                }
                 if ( current_user_can( 'edit_posts' ) ) {
                     $tools[] = [ admin_url( 'post-new.php?post_type=' . ( class_exists( __NAMESPACE__ . '\\Materiali' ) ? Materiali::CPT : 'gfoss_risorsa' ) ), '📎', 'Carica un documento', 'Aggiungi una risorsa/documento riservato ai soci.' ];
                 }

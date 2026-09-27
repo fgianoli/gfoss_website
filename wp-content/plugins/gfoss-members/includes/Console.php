@@ -73,6 +73,9 @@ class Console {
         if ( current_user_can( 'publish_posts' ) ) {
             $tools[] = [ self::page_url( 'scrivi-news', admin_url( 'post-new.php' ) ), '✍️', 'Scrivi una news', 'Pubblica notizie sul sito.' ];
         }
+        if ( current_user_can( Roles::CAP_MANAGE_SOCI ) ) {
+            $tools[] = [ self::page_url( 'gestione-documenti', admin_url( 'edit.php?post_type=' . Doc_Riservato::CPT ) ), '📄', 'Documenti soci', 'Carica modulistica e documenti riservati ai soci.' ];
+        }
         $conv = self::page_url( 'convocazioni' );
         if ( $conv && current_user_can( Roles::CAP_MANAGE_ASSEMBLEE ) ) {
             $tools[] = [ $conv, '🏛️', 'Convocazioni e deleghe', 'Assemblee e gestione deleghe.' ];

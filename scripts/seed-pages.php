@@ -575,6 +575,14 @@ gfoss_seed_page( 'scrivi-news', 'Scrivi una news', $area_id, <<<HTML
 HTML
 , 10 );
 
+// 12f-ter. Documenti riservati ai soci — console front-end di caricamento
+gfoss_seed_page( 'gestione-documenti', 'Gestione documenti soci', $area_id, <<<HTML
+<!-- wp:shortcode -->
+[gfoss_gestione_documenti]
+<!-- /wp:shortcode -->
+HTML
+, 10 );
+
 // 12f-bis. Verbali del direttivo (riservata al CD)
 gfoss_seed_page( 'verbali-direttivo', 'Verbali del direttivo', $area_id, <<<HTML
 <!-- wp:shortcode -->
